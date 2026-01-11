@@ -97,6 +97,28 @@ export const applyIPO = createAsyncThunk(
     }
 );
 
+export const updateIPOApplication = createAsyncThunk(
+    'customers/updateIPOApplication',
+    async ({ id, data }: { id: string; data: Partial<any> }, { rejectWithValue }) => {
+        try {
+            return await ipoApi.updateApplication(id, data);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to update IPO application');
+        }
+    }
+);
+
+export const deleteIPOApplication = createAsyncThunk(
+    'customers/deleteIPOApplication',
+    async (id: string, { rejectWithValue }) => {
+        try {
+            return await ipoApi.deleteApplication(id);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to delete IPO application');
+        }
+    }
+);
+
 export const addBankAccount = createAsyncThunk(
     'customers/addBankAccount',
     async (data: {
@@ -200,6 +222,10 @@ const customerSlice = createSlice({
             })
             .addCase(updateCustomer.fulfilled, (state, action) => {
                 state.isLoading = false;
+                // Check if it's a pending modification request
+                if ((action.payload as any).pending) {
+                    return;
+                }
                 const index = state.customers.findIndex((c) => c.id === action.payload.id);
                 if (index !== -1) {
                     state.customers[index] = action.payload;

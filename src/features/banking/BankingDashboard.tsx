@@ -4,13 +4,15 @@ import { fetchAccounts, fetchTransactions } from './bankingSlice';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { Button } from '../../components/common/Button';
 import { TransactionModal } from './components/TransactionModal';
-import { DollarSign, TrendingUp, TrendingDown, Plus, Filter, Calendar } from 'lucide-react';
+import { EditAccountModal } from './components/EditAccountModal';
+import { DollarSign, TrendingUp, TrendingDown, Plus, Filter, Calendar, Edit2, Eye } from 'lucide-react';
 import type { Account } from '../../types/business.types';
 
 export const BankingDashboard: React.FC = () => {
     const dispatch = useAppDispatch();
     const { accounts, transactions, isLoading } = useAppSelector((state) => state.banking);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+    const [accountToEdit, setAccountToEdit] = useState<Account | null>(null);
     const [showTransactionModal, setShowTransactionModal] = useState(false);
 
     // Filter states
@@ -103,8 +105,7 @@ export const BankingDashboard: React.FC = () => {
                                 {accounts.map((account) => (
                                     <div
                                         key={account.id}
-                                        onClick={() => setSelectedAccount(account)}
-                                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAccount?.id === account.id
+                                        className={`p-4 border rounded-lg transition-colors ${selectedAccount?.id === account.id
                                             ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
                                             : 'hover:bg-slate-50 border-slate-200'
                                             }`}
@@ -123,8 +124,30 @@ export const BankingDashboard: React.FC = () => {
                                                 {formatCurrency(parseFloat(account.balance.toString()))}
                                             </p>
                                         </div>
-                                        <div className="text-xs text-slate-500 capitalize">
+                                        <div className="text-xs text-slate-500 capitalize mb-3">
                                             {account.accountType.replace('_', ' ')} • {account.accountName || 'Unnamed'}
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/50">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 px-2 text-slate-500 hover:text-primary-600"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setAccountToEdit(account);
+                                                }}
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className={`h-8 px-2 ${selectedAccount?.id === account.id ? 'text-blue-600 bg-blue-100' : 'text-slate-500 hover:text-blue-600'}`}
+                                                onClick={() => setSelectedAccount(account)}
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -268,6 +291,14 @@ export const BankingDashboard: React.FC = () => {
                     isOpen={showTransactionModal}
                     onClose={() => setShowTransactionModal(false)}
                     account={selectedAccount}
+                />
+            )}
+
+            {accountToEdit && (
+                <EditAccountModal
+                    isOpen={!!accountToEdit}
+                    onClose={() => setAccountToEdit(null)}
+                    account={accountToEdit}
                 />
             )}
         </div>

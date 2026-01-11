@@ -63,6 +63,28 @@ export const addHolding = createAsyncThunk(
     }
 );
 
+export const updateHolding = createAsyncThunk(
+    'portfolio/updateHolding',
+    async ({ id, data }: { id: string; data: Partial<any> }, { rejectWithValue }) => {
+        try {
+            return await portfolioApi.updateHolding(id, data);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to update holding');
+        }
+    }
+);
+
+export const deleteHolding = createAsyncThunk(
+    'portfolio/deleteHolding',
+    async (id: string, { rejectWithValue }) => {
+        try {
+            return await portfolioApi.deleteHolding(id);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to delete holding');
+        }
+    }
+);
+
 const portfolioSlice = createSlice({
     name: 'portfolio',
     initialState,

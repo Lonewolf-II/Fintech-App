@@ -6,9 +6,13 @@ export interface IPOApplication {
     companyName: string;
     quantity: number;
     pricePerShare: number;
-    totalAmount: number;
+    totalAmount: string | number;
     status: 'pending' | 'verified' | 'allotted' | 'rejected';
-    appliedAt: string;
+    createdAt: string;
+    customer?: {
+        fullName: string;
+        customerId: string;
+    };
 }
 
 export interface ApplyIPOPayload {
@@ -33,6 +37,16 @@ export interface IPOListing {
 export const ipoApi = {
     apply: async (data: ApplyIPOPayload): Promise<IPOApplication> => {
         const response = await apiClient.post('/ipo/apply', data);
+        return response.data;
+    },
+
+    updateApplication: async (id: string, data: Partial<IPOApplication>) => {
+        const response = await apiClient.put(`/ipo/applications/${id}`, data);
+        return response.data;
+    },
+
+    deleteApplication: async (id: string) => {
+        const response = await apiClient.delete(`/ipo/applications/${id}`);
         return response.data;
     },
 

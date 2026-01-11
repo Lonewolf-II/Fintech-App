@@ -1,4 +1,4 @@
-import { Customer, Account, CustomerCredential, sequelize } from '../models/index.js';
+import { Customer, Account, CustomerCredential, ModificationRequest, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import fs from 'fs';
 import csv from 'csv-parser';
@@ -74,7 +74,7 @@ export const getCustomerById = async (req, res) => {
 export const createCustomer = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { fullName, email, phone, address, dateOfBirth, accountType } = req.body;
+        const { fullName, email, phone, address, dateOfBirth, accountType, accountNumber, accountName, bankName, branch } = req.body;
 
         const customerId = await generateCustomerId();
 
@@ -92,10 +92,13 @@ export const createCustomer = async (req, res) => {
 
         // Create default bank account based on customer type
         const bankAccountType = accountType === 'corporate' ? 'current' : 'savings';
-        const accountNumber = `ACC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const finalAccountNumber = accountNumber || `ACC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         await Account.create({
-            accountNumber,
+            accountNumber: finalAccountNumber,
+            accountName: accountName || fullName,
+            bankName: bankName,
+            branch: branch,
             customerId: customer.id,
             accountType: bankAccountType,
             balance: 0.00,
@@ -194,6 +197,19 @@ export const updateCustomer = async (req, res) => {
 
         if (!customer) {
             return res.status(404).json({ error: 'Customer not found' });
+        }
+
+        // Check for Maker role
+        if (req.user.role === 'maker') {
+            await ModificationRequest.create({
+                targetModel: 'Customer',
+                targetId: req.params.id,
+                requestedChanges: req.body,
+                changeType: 'update',
+                status: 'pending',
+                requestedBy: req.user.id
+            });
+            return res.json({ message: 'Modification request submitted for approval', pending: true });
         }
 
         await customer.update(req.body);

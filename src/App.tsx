@@ -9,14 +9,20 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AdminDashboard } from './features/admin/AdminDashboard';
 import { UserManagement } from './features/admin/UserManagement';
 import { IPOManagement } from './features/admin/IPOManagement';
+import { ActivityLogs } from './features/admin/ActivityLogs';
 import { BulkIPO } from './features/maker/BulkIPO';
 import { CustomerManagement } from './features/customers/CustomerManagement';
 import { CustomerProfile } from './features/customers/CustomerProfile';
 import { BankingDashboard } from './features/banking/BankingDashboard';
+import { TransactionOperations } from './features/banking/TransactionOperations';
 import { PortfolioDashboard } from './features/portfolio/PortfolioDashboard';
 import { MakerDashboard } from './features/maker/MakerDashboard';
 import { CheckerDashboard } from './features/checker/CheckerDashboard';
 import { InvestorDashboard } from './features/investor/InvestorDashboard';
+import { PendingModifications } from './features/checker/PendingModifications';
+import { PendingVerification } from './features/checker/PendingVerification';
+import { PendingApprovals } from './features/checker/PendingApprovals';
+import { IPOApplications } from './features/checker/IPOApplications';
 
 // Root redirect component
 const RootRedirect: React.FC = () => {
@@ -52,6 +58,7 @@ function AppRoutes() {
               <Routes>
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<UserManagement />} />
+                <Route path="logs" element={<ActivityLogs />} />
                 <Route path="customers" element={<CustomerManagement />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="banking" element={<BankingDashboard />} />
@@ -76,6 +83,7 @@ function AppRoutes() {
                 <Route path="customers" element={<CustomerManagement />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="banking" element={<BankingDashboard />} />
+                <Route path="transactions" element={<TransactionOperations />} />
                 <Route path="portfolio" element={<PortfolioDashboard />} />
                 <Route path="ipo-applications" element={<div>IPO Applications List (Coming Soon)</div>} />
                 <Route path="ipo/apply" element={<div>Manual Application Entry (Coming Soon)</div>} />
@@ -95,10 +103,11 @@ function AppRoutes() {
             <DashboardLayout>
               <Routes>
                 <Route index element={<CheckerDashboard />} />
-                <Route path="banking" element={<div>Banking Page (Coming Soon)</div>} />
-                <Route path="portfolio" element={<div>Portfolio Page (Coming Soon)</div>} />
-                <Route path="ipo" element={<div>IPO Page (Coming Soon)</div>} />
-                <Route path="verification" element={<div>Verification Queue (Coming Soon)</div>} />
+                <Route path="customers/:id" element={<CustomerProfile />} />
+                <Route path="modifications" element={<PendingModifications />} />
+                <Route path="verification" element={<PendingVerification />} />
+                <Route path="approvals" element={<PendingApprovals />} />
+                <Route path="ipo-applications" element={<IPOApplications />} />
                 <Route path="settings" element={<div>Settings Page (Coming Soon)</div>} />
               </Routes>
             </DashboardLayout>

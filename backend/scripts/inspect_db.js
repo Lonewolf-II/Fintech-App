@@ -5,7 +5,7 @@ const inspect = async () => {
         await sequelize.authenticate();
         console.log('Connected.');
 
-        const tables = ['users'];
+        const tables = ['modification_requests', 'users'];
 
         for (const table of tables) {
             console.log(`\n--- Columns in ${table} ---`);

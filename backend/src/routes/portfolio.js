@@ -4,7 +4,9 @@ import {
     createPortfolio,
     getPortfolioHoldings,
     addHolding,
-    updateHoldingPrice
+    updateHoldingPrice,
+    updateHolding,
+    deleteHolding
 } from '../controllers/portfolioController.js';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 
@@ -20,5 +22,9 @@ router.post('/portfolios', requireRole('admin', 'investor'), createPortfolio);
 router.get('/portfolios/:portfolioId/holdings', requireRole('admin', 'investor'), getPortfolioHoldings);
 router.post('/holdings', requireRole('admin', 'investor'), addHolding);
 router.put('/holdings/:id/price', requireRole('admin', 'investor'), updateHoldingPrice);
+
+// Maker-Checker Holding Routes
+router.put('/holdings/:id', requireRole('maker', 'admin'), updateHolding);
+router.delete('/holdings/:id', requireRole('maker', 'admin'), deleteHolding);
 
 export default router;

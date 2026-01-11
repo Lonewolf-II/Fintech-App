@@ -17,6 +17,11 @@ const customerSchema = z.object({
     dateOfBirth: z.string().optional(),
     accountType: z.enum(['individual', 'corporate']).optional(),
     kycStatus: z.enum(['pending', 'verified', 'rejected']).optional(),
+    // Bank Account Details (Required for new customers)
+    accountNumber: z.string().min(1, 'Account Number is required'),
+    accountName: z.string().min(1, 'Account Name is required'),
+    bankName: z.string().min(1, 'Bank Name is required'),
+    branch: z.string().min(1, 'Branch is required'),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -59,11 +64,24 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             dateOfBirth: customer?.dateOfBirth || '',
             accountType: customer?.accountType || 'individual',
             kycStatus: customer?.kycStatus || 'pending',
+            // Default empty for new, or perhaps pre-fill if editing not supported here
+            accountNumber: '',
+            accountName: '',
+            bankName: '',
+            branch: '',
         },
     });
 
     useEffect(() => {
         if (customer) {
+            // Note: We are NOT pre-filling bank details here because this form 
+            // is primarily for Customer details. Editing account happens elsewhere.
+            // But we must provide dummy values to satisfy schema validation if we submit an update.
+            // OR we make schema dynamic. For now, let's assume this form is mainly for creation
+            // or we make fields optional for update using .partial() in a refine or separate schema.
+            // Simpler approach: If customer exists, we might hide these fields or make them optional.
+            // For this iteration, let's focus on Creation as requested.
+
             reset({
                 fullName: customer.fullName,
                 email: customer.email,
@@ -72,6 +90,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 dateOfBirth: customer.dateOfBirth || '',
                 accountType: customer.accountType || 'individual',
                 kycStatus: customer.kycStatus || 'pending',
+                accountNumber: 'N/A', // Placeholder for validation
+                accountName: 'N/A',
+                bankName: 'N/A',
+                branch: 'N/A',
             });
         }
     }, [customer, reset]);
@@ -83,6 +105,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 kycStatus: data.kycStatus || 'pending' as const,
                 accountType: data.accountType || 'individual' as const,
             };
+
+            // Remove placeholder bank details if updating
+            if (customer) {
+                delete (customerData as any).accountNumber;
+                delete (customerData as any).accountName;
+                delete (customerData as any).bankName;
+                delete (customerData as any).branch;
+            }
 
             let resultAction;
             if (customer) {
@@ -97,7 +127,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             } else {
                 if (resultAction.payload) {
                     console.error('Action failed:', resultAction.payload);
-                    // You might want to set a form error here if you have a general error field
                 }
             }
         } catch (error) {
@@ -107,6 +136,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <h3 className="text-lg font-medium text-slate-800 border-b pb-2 mb-4">Personal Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                     label="Full Name"
@@ -155,6 +185,49 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                     options={kycStatusOptions}
                 />
             </div>
+
+            <Input
+                label="Address"
+                {...register('address')}
+                error={errors.address?.message}
+                placeholder="Enter full address"
+            />
+
+            {!customer && (
+                <>
+                    <h3 className="text-lg font-medium text-slate-800 border-b pb-2 mt-6 mb-4">Bank Account Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                            label="Account Number"
+                            {...register('accountNumber')}
+                            error={errors.accountNumber?.message}
+                            placeholder="Enter account number"
+                            required
+                        />
+                        <Input
+                            label="Account Name"
+                            {...register('accountName')}
+                            error={errors.accountName?.message}
+                            placeholder="Account holder name"
+                            required
+                        />
+                        <Input
+                            label="Bank Name"
+                            {...register('bankName')}
+                            error={errors.bankName?.message}
+                            placeholder="Enter bank name"
+                            required
+                        />
+                        <Input
+                            label="Branch"
+                            {...register('branch')}
+                            error={errors.branch?.message}
+                            placeholder="Enter branch"
+                            required
+                        />
+                    </div>
+                </>
+            )}
 
             <Input
                 label="Address"

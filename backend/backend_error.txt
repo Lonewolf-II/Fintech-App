@@ -1,0 +1,9 @@
+
+[2026-01-11T13:54:48.946Z] Get pending requests error: column ModificationRequest.createdAt does not exist
+Stack: Error
+    at Query.run (G:\Earnmore\fintech-app\backend\node_modules\sequelize\lib\dialects\postgres\query.js:50:25)
+    at G:\Earnmore\fintech-app\backend\node_modules\sequelize\lib\sequelize.js:315:28
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async PostgresQueryInterface.select (G:\Earnmore\fintech-app\backend\node_modules\sequelize\lib\dialects\abstract\query-interface.js:407:12)
+    at async ModificationRequest.findAll (G:\Earnmore\fintech-app\backend\node_modules\sequelize\lib\model.js:1140:21)
+    at async getPendingRequests (file:///G:/Earnmore/fintech-app/backend/src/controllers/checkerController.js:6:26)

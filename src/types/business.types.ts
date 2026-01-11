@@ -54,11 +54,10 @@ export interface IPOApplication {
     companyName: string;
     quantity: number;
     pricePerShare: number;
-    totalAmount: number;
+    totalAmount: number | string;
     status: 'pending' | 'verified' | 'allotted' | 'rejected';
-    appliedAt: string;
     verifiedBy?: number;
-    createdAt?: string;
+    createdAt: string;
     updatedAt?: string;
 }
 

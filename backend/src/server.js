@@ -16,6 +16,7 @@ import bankingRoutes from './routes/banking.js';
 import portfolioRoutes from './routes/portfolio.js';
 import ipoRoutes from './routes/ipo.js';
 import checkerRoutes from './routes/checker.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -69,6 +70,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/banking', bankingRoutes);
 app.use('/api/portfolio', requireFeature('portfolio'), portfolioRoutes);
 app.use('/api/ipo', requireFeature('ipo'), ipoRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/checker', checkerRoutes);
 
 

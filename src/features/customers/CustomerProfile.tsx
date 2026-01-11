@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { fetchCustomer } from './customerSlice';
+import { fetchCustomer, updateIPOApplication, deleteIPOApplication } from './customerSlice';
 import { IPOApplicationForm } from './components/IPOApplicationForm';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
-import { User, Shield, Plus, Key, Lock, Edit } from 'lucide-react';
+import { User, Shield, Plus, Key, Lock, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { AddBankAccountModal } from './components/AddBankAccountModal';
 import { AddCredentialModal } from './components/AddCredentialModal';
 import { Button } from '../../components/common/Button';
 import { EditAccountModal } from './components/EditAccountModal';
+import { actionRequest } from '../checker/checkerSlice';
+import { toast } from 'react-hot-toast';
+import { fetchHoldings, updateHolding, deleteHolding } from '../portfolio/portfolioSlice';
 
 import { Modal } from '../../components/common/Modal';
 import type { Account } from '../../types/business.types';
@@ -16,6 +19,7 @@ import type { Account } from '../../types/business.types';
 export const CustomerProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const dispatch = useAppDispatch();
+    const { user } = useAppSelector((state) => state.auth);
     const { selectedCustomer, isLoading, error } = useAppSelector((state) => state.customers);
     const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'portfolio' | 'credentials'>('overview');
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
@@ -50,13 +54,56 @@ export const CustomerProfile: React.FC = () => {
                         <p className="text-slate-500">ID: {selectedCustomer.customerId}</p>
                     </div>
                 </div>
-                <div className={`px-4 py-1 rounded-full text-sm font-medium ${selectedCustomer.kycStatus === 'verified' ? 'bg-green-100 text-green-700' :
-                    selectedCustomer.kycStatus === 'rejected' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                    }`}>
-                    KYC: {selectedCustomer.kycStatus.toUpperCase()}
+                <div className="flex gap-2">
+                    <div className={`px-4 py-1 rounded-full text-sm font-medium h-fit ${selectedCustomer.kycStatus === 'verified' ? 'bg-green-100 text-green-700' :
+                        selectedCustomer.kycStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                        }`}>
+                        KYC: {selectedCustomer.kycStatus.toUpperCase()}
+                    </div>
                 </div>
             </div>
+
+            {/* Checker Actions */}
+            {user?.role === 'checker' && selectedCustomer.kycStatus === 'pending' && (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg flex justify-between items-center">
+                    <div>
+                        <h3 className="font-semibold text-blue-900">Pending KYC Verification</h3>
+                        <p className="text-sm text-blue-700">Review the customer details and documents before approving.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="primary"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                                dispatch(actionRequest({ id: selectedCustomer.id, action: 'approve', type: 'kyc' }))
+                                    .unwrap()
+                                    .then(() => {
+                                        toast.success('KYC Approved');
+                                        dispatch(fetchCustomer(id!));
+                                    })
+                                    .catch((err) => toast.error(err));
+                            }}
+                        >
+                            Approve KYC
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={() => {
+                                dispatch(actionRequest({ id: selectedCustomer.id, action: 'reject', type: 'kyc' }))
+                                    .unwrap()
+                                    .then(() => {
+                                        toast.success('KYC Rejected');
+                                        dispatch(fetchCustomer(id!));
+                                    })
+                                    .catch((err) => toast.error(err));
+                            }}
+                        >
+                            Reject KYC
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="flex border-b border-slate-200 overflow-x-auto">
@@ -178,57 +225,117 @@ export const CustomerProfile: React.FC = () => {
                 )}
 
                 {activeTab === 'portfolio' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-1">
-                            <IPOApplicationForm
-                                customerId={selectedCustomer.id}
-                                accounts={accounts}
-                                onSuccess={() => dispatch(fetchCustomer(selectedCustomer.id))}
-                            />
+                    <div className="space-y-6">
+                        {/* Portfolio Holdings Section */}
+                        <div className="bg-white rounded-lg shadow overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                                <h3 className="text-lg font-semibold text-slate-900">Portfolio Holdings</h3>
+                                <Button size="sm" onClick={() => { /* Add Holding Modal? */ }}>
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add Holding
+                                </Button>
+                            </div>
+                            {/* Holdings Table - Placeholder for now as we focus on IPO */}
+                            <div className="p-6 text-center text-slate-500">
+                                Portfolio Holdings functionality coming soon.
+                            </div>
                         </div>
-                        <div className="lg:col-span-2">
-                            <div className="bg-white rounded-lg shadow overflow-hidden">
-                                <div className="px-6 py-4 border-b border-slate-200">
-                                    <h3 className="text-lg font-semibold text-slate-900">Application History</h3>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-slate-200">
-                                        <thead className="bg-slate-50">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qty</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-slate-200">
-                                            {ipoApplications.map((app) => (
-                                                <tr key={app.id}>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{app.companyName}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{app.quantity}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(app.totalAmount)}</td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${app.status === 'verified' ? 'bg-green-100 text-green-800' :
-                                                            app.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                                app.status === 'allotted' ? 'bg-blue-100 text-blue-800' :
-                                                                    'bg-yellow-100 text-yellow-800'
-                                                            }`}>
-                                                            {app.status}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                                        {formatDateTime(app.appliedAt)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {ipoApplications.length === 0 && (
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-1">
+                                <IPOApplicationForm
+                                    customerId={selectedCustomer.id}
+                                    accounts={accounts}
+                                    onSuccess={() => dispatch(fetchCustomer(selectedCustomer.id))}
+                                />
+                            </div>
+                            <div className="lg:col-span-2">
+                                <div className="bg-white rounded-lg shadow overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-slate-200">
+                                        <h3 className="text-lg font-semibold text-slate-900">IPO Applications</h3>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-slate-200">
+                                            <thead className="bg-slate-50">
                                                 <tr>
-                                                    <td colSpan={5} className="px-6 py-4 text-center text-slate-500">No applications yet</td>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qty</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-slate-200">
+                                                {ipoApplications.map((app) => (
+                                                    <tr key={app.id}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{app.companyName}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{app.quantity}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(Number(app.totalAmount))}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${app.status === 'verified' ? 'bg-green-100 text-green-800' :
+                                                                app.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                    app.status === 'allotted' ? 'bg-blue-100 text-blue-800' :
+                                                                        'bg-yellow-100 text-yellow-800'
+                                                                }`}>
+                                                                {app.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                                            {formatDateTime(app.createdAt)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                            <div className="flex justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newQty = prompt("Enter new quantity:", String(app.quantity));
+                                                                        if (newQty && !isNaN(Number(newQty))) {
+                                                                            dispatch(updateIPOApplication({
+                                                                                id: app.id,
+                                                                                data: { quantity: Number(newQty), totalAmount: Number(newQty) * Number(app.pricePerShare) }
+                                                                            }))
+                                                                                .unwrap()
+                                                                                .then((res) => {
+                                                                                    if (res.pending) toast.success("Modification Request Sent");
+                                                                                    else toast.success("Updated Successfully");
+                                                                                    dispatch(fetchCustomer(selectedCustomer.id));
+                                                                                })
+                                                                                .catch(err => toast.error(err));
+                                                                        }
+                                                                    }}
+                                                                    className="text-blue-600 hover:text-blue-900"
+                                                                >
+                                                                    <Edit className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (confirm("Are you sure you want to delete this application?")) {
+                                                                            dispatch(deleteIPOApplication(app.id))
+                                                                                .unwrap()
+                                                                                .then((res) => {
+                                                                                    if (res.pending) toast.success("Deletion Request Sent");
+                                                                                    else toast.success("Deleted Successfully");
+                                                                                    dispatch(fetchCustomer(selectedCustomer.id));
+                                                                                })
+                                                                                .catch(err => toast.error(err));
+                                                                        }
+                                                                    }}
+                                                                    className="text-red-600 hover:text-red-900"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {ipoApplications.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={6} className="px-6 py-4 text-center text-slate-500">No applications yet</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>

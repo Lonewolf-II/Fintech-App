@@ -14,6 +14,7 @@ interface EditAccountModalProps {
 export const EditAccountModal: React.FC<EditAccountModalProps> = ({ isOpen, onClose, account }) => {
     const dispatch = useAppDispatch();
     const [formData, setFormData] = useState({
+        accountNumber: '',
         accountName: '',
         accountType: '',
         status: '',
@@ -27,6 +28,7 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({ isOpen, onCl
     useEffect(() => {
         if (account) {
             setFormData({
+                accountNumber: account.accountNumber || '',
                 accountName: account.accountName || '',
                 accountType: account.accountType,
                 status: account.status,
@@ -86,9 +88,9 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({ isOpen, onCl
                     <label className="block text-sm font-medium text-slate-700 mb-1">Account Number</label>
                     <input
                         type="text"
-                        value={account.accountNumber}
-                        disabled
-                        className="w-full px-3 py-2 border rounded-md bg-slate-100 text-slate-500"
+                        value={formData.accountNumber}
+                        onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
                     />
                 </div>
 

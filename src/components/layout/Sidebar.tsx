@@ -38,6 +38,12 @@ const navigationItems: NavItem[] = [
         roles: ['admin'],
     },
     {
+        label: 'Activity Logs',
+        icon: <FileText className="w-5 h-5" />,
+        path: '/logs',
+        roles: ['admin'],
+    },
+    {
         label: 'Customers',
         icon: <Users className="w-5 h-5" />,
         path: '/customers',
@@ -74,6 +80,12 @@ const navigationItems: NavItem[] = [
         roles: ['checker'],
     },
     {
+        label: 'Share Approvals',
+        icon: <TrendingUp className="w-5 h-5" />,
+        path: '/approvals',
+        roles: ['checker'],
+    },
+    {
         label: 'My Investments',
         icon: <Briefcase className="w-5 h-5" />,
         path: '/investments',
@@ -89,6 +101,12 @@ const navigationItems: NavItem[] = [
         label: 'Bulk IPO Application',
         icon: <PlusCircle className="w-5 h-5" />,
         path: '/bulk-ipo',
+        roles: ['maker'],
+    },
+    {
+        label: 'Transactions',
+        icon: <TrendingUp className="w-5 h-5" />, // Or another suitable icon like DollarSign if available
+        path: '/transactions',
         roles: ['maker'],
     },
     {

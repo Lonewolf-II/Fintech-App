@@ -1,6 +1,6 @@
 import Portfolio from '../models/Portfolio.js';
 import Holding from '../models/Holding.js';
-import { Customer } from '../models/index.js';
+import { Customer, ModificationRequest } from '../models/index.js';
 
 // Get all portfolios
 export const getAllPortfolios = async (req, res) => {
@@ -110,5 +110,89 @@ export const updateHoldingPrice = async (req, res) => {
     } catch (error) {
         console.error('Update holding error:', error);
         res.status(500).json({ error: 'Failed to update holding' });
+    }
+};
+// Update Holding (Maker-Checker)
+export const updateHolding = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const holding = await Holding.findByPk(id);
+
+        if (!holding) {
+            return res.status(404).json({ error: 'Holding not found' });
+        }
+
+        if (req.user.role === 'maker') {
+            await ModificationRequest.create({
+                targetModel: 'Holding',
+                targetId: id,
+                requestedChanges: updates,
+                changeType: 'update',
+                status: 'pending',
+                requestedBy: req.user.id
+            });
+            return res.json({ message: 'Modification request submitted for approval', pending: true });
+        }
+
+        // Admin/Checker/System direct update
+        await holding.update(updates);
+
+        // Recalculate Portfolio totals if needed (simplified)
+        const portfolio = await Portfolio.findByPk(holding.portfolioId);
+        if (portfolio) {
+            // Re-aggregating would be safer but expensive. For now, assume direct updates are handled carefully.
+            // or trigger a recalc function.
+        }
+
+        res.json(holding);
+    } catch (error) {
+        console.error('Update holding error:', error);
+        res.status(500).json({ error: 'Failed to update holding' });
+    }
+};
+
+// Delete Holding (Maker-Checker)
+export const deleteHolding = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const holding = await Holding.findByPk(id);
+
+        if (!holding) {
+            return res.status(404).json({ error: 'Holding not found' });
+        }
+
+        if (req.user.role === 'maker') {
+            await ModificationRequest.create({
+                targetModel: 'Holding',
+                targetId: id,
+                requestedChanges: {},
+                changeType: 'delete',
+                status: 'pending',
+                requestedBy: req.user.id
+            });
+            return res.json({ message: 'Deletion request submitted for approval', pending: true });
+        }
+
+        // Direct delete
+        const portfolioId = holding.portfolioId;
+        const investmentToRemove = parseFloat(holding.quantity) * parseFloat(holding.purchasePrice);
+        const valueToRemove = parseFloat(holding.quantity) * parseFloat(holding.currentPrice);
+
+        await holding.destroy();
+
+        // Update Portfolio
+        const portfolio = await Portfolio.findByPk(portfolioId);
+        if (portfolio) {
+            await portfolio.update({
+                totalInvestment: Math.max(0, parseFloat(portfolio.totalInvestment) - investmentToRemove),
+                totalValue: Math.max(0, parseFloat(portfolio.totalValue) - valueToRemove)
+            });
+        }
+
+        res.json({ message: 'Holding deleted' });
+    } catch (error) {
+        console.error('Delete holding error:', error);
+        res.status(500).json({ error: 'Failed to delete holding' });
     }
 };

@@ -34,4 +34,14 @@ export const portfolioApi = {
         const response = await apiClient.put(`/portfolio/holdings/${id}/price`, { currentPrice });
         return response.data;
     },
+
+    updateHolding: async (id: string, data: Partial<Holding>) => {
+        const response = await apiClient.put(`/portfolio/holdings/${id}`, data);
+        return response.data;
+    },
+
+    deleteHolding: async (id: string) => {
+        const response = await apiClient.delete(`/portfolio/holdings/${id}`);
+        return response.data;
+    },
 };

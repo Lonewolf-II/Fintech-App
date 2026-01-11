@@ -25,8 +25,10 @@ export function formatAmount(amount: number): string {
 /**
  * Format date to readable string
  */
-export function formatDate(date: Date | string, formatStr: string = 'PPP'): string {
+export function formatDate(date: Date | string | undefined | null, formatStr: string = 'PPP'): string {
+    if (!date) return '-';
     const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
     return format(dateObj, formatStr);
 }
 

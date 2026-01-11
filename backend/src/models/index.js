@@ -9,6 +9,7 @@ import IPOApplication from './IPOApplication.js';
 import IPOListing from './IPOListing.js';
 import CustomerCredential from './CustomerCredential.js';
 import ModificationRequest from './ModificationRequest.js';
+import ActivityLog from './ActivityLog.js';
 
 // User - Customer associations
 User.hasMany(Customer, { foreignKey: 'createdBy', as: 'createdCustomers' });
@@ -57,5 +58,6 @@ export {
     IPOApplication,
     IPOListing,
     CustomerCredential,
-    ModificationRequest
+    ModificationRequest,
+    ActivityLog
 };

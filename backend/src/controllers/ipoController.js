@@ -1,4 +1,5 @@
-import { IPOApplication, Account, Customer, IPOListing, sequelize } from '../models/index.js';
+import { IPOApplication, Account, Customer, IPOListing, ModificationRequest, sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
 
 export const applyIPO = async (req, res) => {
     try {
@@ -16,6 +17,19 @@ export const applyIPO = async (req, res) => {
 
         if (availableBalance < totalAmount) {
             return res.status(400).json({ error: 'Insufficient available funds' });
+        }
+
+        // Check for existing application (any status except rejected)
+        const existingApplication = await IPOApplication.findOne({
+            where: {
+                customerId,
+                companyName,
+                status: { [Op.ne]: 'rejected' }
+            }
+        });
+
+        if (existingApplication) {
+            return res.status(400).json({ error: 'You have already applied for this IPO' });
         }
 
         const application = await IPOApplication.create({
@@ -233,5 +247,84 @@ export const bulkApplyIPO = async (req, res) => {
         if (transaction) await transaction.rollback();
         console.error('Bulk IPO error:', error);
         res.status(500).json({ error: 'Failed to process bulk IPO applications' });
+    }
+};
+
+// Update IPO Application
+export const updateIPOApplication = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body; // e.g., { quantity: 100, totalAmount: 10000 }
+        const application = await IPOApplication.findByPk(id);
+
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        if (req.user.role === 'maker') {
+            await ModificationRequest.create({
+                targetModel: 'IPOApplication',
+                targetId: id,
+                requestedChanges: updates,
+                changeType: 'update',
+                status: 'pending',
+                requestedBy: req.user.id
+            });
+            return res.json({ message: 'Modification request submitted for approval', pending: true });
+        }
+
+        // Admin direct update logic
+        await application.update(updates);
+        res.json(application);
+    } catch (error) {
+        console.error('Update IPO error:', error);
+        res.status(500).json({ error: 'Failed to update IPO application' });
+    }
+};
+
+// Delete IPO Application
+export const deleteIPOApplication = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+        const application = await IPOApplication.findByPk(id);
+
+        if (!application) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        if (req.user.role === 'maker') {
+            await transaction.commit(); // No db changes yet
+            await ModificationRequest.create({
+                targetModel: 'IPOApplication',
+                targetId: id,
+                requestedChanges: {}, // No changes, just delete
+                changeType: 'delete',
+                status: 'pending',
+                requestedBy: req.user.id
+            });
+            return res.json({ message: 'Deletion request submitted for approval', pending: true });
+        }
+
+        // Direct delete (Admin)
+        // Unblock funds if verified
+        if (application.status === 'verified') {
+            const account = await Account.findOne({
+                where: { customerId: application.customerId, isPrimary: true }
+            });
+            if (account) {
+                account.blockedAmount = Math.max(0, parseFloat(account.blockedAmount) - parseFloat(application.totalAmount));
+                await account.save({ transaction });
+            }
+        }
+
+        await application.destroy({ transaction });
+        await transaction.commit();
+        res.json({ message: 'IPO application deleted' });
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        console.error('Delete IPO error:', error);
+        res.status(500).json({ error: 'Failed to delete IPO application' });
     }
 };

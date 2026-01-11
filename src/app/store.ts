@@ -1,19 +1,21 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/authSlice';
-import userManagementReducer from '../features/admin/userSlice';
+import userReducer from '../features/admin/userSlice';
 import customerReducer from '../features/customers/customerSlice';
 import bankingReducer from '../features/banking/bankingSlice';
 import portfolioReducer from '../features/portfolio/portfolioSlice';
 import checkerReducer from '../features/checker/checkerSlice';
+import adminReducer from '../features/admin/adminSlice';
 
 export const store = configureStore({
     reducer: {
         auth: authReducer,
-        userManagement: userManagementReducer,
+        users: userReducer,
         customers: customerReducer,
         banking: bankingReducer,
         portfolio: portfolioReducer,
         checker: checkerReducer,
+        admin: adminReducer
     },
 });
 

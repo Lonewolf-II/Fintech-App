@@ -1,15 +1,15 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { checkerApi } from '../../api/checkerApi';
-import type { ModificationRequest } from '../../api/checkerApi';
+import type { CheckerData } from '../../api/checkerApi';
 
 interface CheckerState {
-    pendingRequests: ModificationRequest[];
+    pendingData: CheckerData | null;
     isLoading: boolean;
     error: string | null;
 }
 
 const initialState: CheckerState = {
-    pendingRequests: [],
+    pendingData: null,
     isLoading: false,
     error: null,
 };
@@ -19,20 +19,34 @@ export const fetchPendingRequests = createAsyncThunk(
     'checker/fetchPendingRequests',
     async (_, { rejectWithValue }) => {
         try {
-            return await checkerApi.getPendingRequests();
+            const response = await checkerApi.getPendingRequests();
+            return response;
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.error || 'Failed to fetch requests');
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch pending requests');
         }
     }
 );
 
 export const actionRequest = createAsyncThunk(
     'checker/actionRequest',
-    async ({ id, action, notes }: { id: string; action: 'approve' | 'reject'; notes?: string }, { rejectWithValue }) => {
+    async (payload: { id: string; action: 'approve' | 'reject'; notes?: string; type?: 'modification' | 'kyc' | 'ipo' }, { rejectWithValue }) => {
         try {
-            return await checkerApi.actionRequest(id, action, notes);
+            const response = await checkerApi.actionRequest(payload);
+            return { id: payload.id, type: payload.type || 'modification', data: response.data };
         } catch (error: any) {
-            return rejectWithValue(error.response?.data?.error || 'Failed to process request');
+            return rejectWithValue(error.response?.data?.message || 'Failed to process request');
+        }
+    }
+);
+
+export const bulkActionRequest = createAsyncThunk(
+    'checker/bulkActionRequest',
+    async (payload: { ids: string[]; action: 'approve' | 'reject'; type: string }, { rejectWithValue }) => {
+        try {
+            await checkerApi.bulkActionRequest(payload);
+            return payload;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to process bulk request');
         }
     }
 );
@@ -53,17 +67,33 @@ const checkerSlice = createSlice({
             })
             .addCase(fetchPendingRequests.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.pendingRequests = action.payload;
+                state.pendingData = action.payload;
             })
             .addCase(fetchPendingRequests.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
             })
             .addCase(actionRequest.fulfilled, (state, action) => {
-                // Remove processed request from list
-                // The API returns the updated request (with status approved/rejected)
-                const processedId = (action.payload as ModificationRequest).id;
-                state.pendingRequests = state.pendingRequests.filter(req => req.id !== processedId);
+                if (state.pendingData) {
+                    const { id, type } = action.payload;
+                    if (type === 'modification') {
+                        state.pendingData.modifications = state.pendingData.modifications.filter(req => req.id !== id);
+                    } else if (type === 'kyc') {
+                        // ID from payload is string, but KYC ID is number
+                        state.pendingData.kyc = state.pendingData.kyc.filter(req => String(req.id) !== id);
+                    } else if (type === 'ipo') {
+                        // ID from payload is string, but IPO ID is number
+                        state.pendingData.ipo = state.pendingData.ipo.filter(req => String(req.id) !== id);
+                    }
+                }
+            })
+            .addCase(bulkActionRequest.fulfilled, (state, action) => {
+                if (state.pendingData) {
+                    const { ids, type } = action.payload;
+                    if (type === 'ipo') {
+                        state.pendingData.ipo = state.pendingData.ipo.filter(req => !ids.includes(String(req.id)));
+                    }
+                }
             });
     },
 });

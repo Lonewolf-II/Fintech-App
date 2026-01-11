@@ -1,14 +1,16 @@
 import Account from '../models/Account.js';
 import Transaction from '../models/Transaction.js';
-import { Customer, ModificationRequest } from '../models/index.js';
+import { Customer, ModificationRequest, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
+import fs from 'fs';
+import csv from 'csv-parser';
 
 // Get all accounts
 export const getAllAccounts = async (req, res) => {
     try {
         const accounts = await Account.findAll({
             include: [{ model: Customer, as: 'customer', attributes: ['fullName', 'email'] }],
-            order: [['createdAt', 'DESC']]
+            order: [['created_at', 'DESC']]
         });
         res.json(accounts);
     } catch (error) {
@@ -62,7 +64,7 @@ export const getAccountTransactions = async (req, res) => {
 
         const transactions = await Transaction.findAll({
             where: whereClause,
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
             limit: 100 // Increased limit for statement view
         });
         res.json(transactions);
@@ -142,4 +144,71 @@ export const updateAccount = async (req, res) => {
         console.error('Update account error:', error);
         res.status(500).json({ error: 'Failed to update account' });
     }
+};
+// Bulk Deposit
+export const bulkDeposit = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const results = [];
+    const errors = [];
+    const createdTransactions = [];
+
+    fs.createReadStream(req.file.path)
+        .pipe(csv())
+        .on('data', (data) => results.push(data))
+        .on('end', async () => {
+            for (const row of results) {
+                const transaction = await sequelize.transaction();
+                try {
+                    // Expected CSV headers: accountNumber, amount, description
+                    const cleanRow = {};
+                    Object.keys(row).forEach(key => {
+                        cleanRow[key.trim()] = row[key];
+                    });
+
+                    const { accountNumber, amount, description } = cleanRow;
+
+                    if (!accountNumber || !amount) {
+                        throw new Error(`Missing mandatory fields for row: ${JSON.stringify(cleanRow)}`);
+                    }
+
+                    const account = await Account.findOne({ where: { accountNumber } });
+                    if (!account) {
+                        throw new Error(`Account not found: ${accountNumber}`);
+                    }
+
+                    const newBalance = parseFloat(account.balance) + parseFloat(amount);
+
+                    const txn = await Transaction.create({
+                        transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                        accountId: account.id,
+                        transactionType: 'deposit',
+                        amount: parseFloat(amount),
+                        balanceAfter: newBalance,
+                        description: description || 'Bulk Deposit',
+                        createdBy: req.user.id
+                    }, { transaction });
+
+                    await account.update({ balance: newBalance }, { transaction });
+
+                    await transaction.commit();
+                    createdTransactions.push(txn);
+                } catch (error) {
+                    await transaction.rollback();
+                    console.error(`Error processing row ${JSON.stringify(row)}:`, error);
+                    errors.push({ row, error: error.message });
+                }
+            }
+
+            // Cleanup
+            fs.unlinkSync(req.file.path);
+
+            res.json({
+                message: `Processed ${results.length} rows`,
+                successCount: createdTransactions.length,
+                errors: errors.length > 0 ? errors : undefined
+            });
+        });
 };

@@ -27,7 +27,7 @@ import type { User } from '../../types/auth.types';
 
 export const UserManagement: React.FC = () => {
     const dispatch = useAppDispatch();
-    const { users, selectedUser } = useAppSelector((state) => state.userManagement);
+    const { users, selectedUser } = useAppSelector((state) => state.users);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);

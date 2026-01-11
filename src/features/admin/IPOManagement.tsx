@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ipoApi, type IPOListing } from '../../api/ipoApi';
+import { ipoApi, type IPOListing, type IPOApplication } from '../../api/ipoApi';
+import { adminApi } from '../../api/adminApi';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
-import { Plus, TrendingUp } from 'lucide-react';
+import { Plus, TrendingUp, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
 const ipoSchema = z.object({
@@ -219,8 +220,106 @@ export const IPOManagement: React.FC = () => {
                             Create IPO
                         </Button>
                     </div>
+
                 </form>
             </Modal>
+
+            {/* IPO Applications List - Admin View */}
+            <div className="mt-8">
+                <h2 className="text-xl font-bold text-slate-900 mb-4">Recent Applications</h2>
+                <IPOApplicationList />
+            </div>
+        </div >
+    );
+};
+
+const IPOApplicationList: React.FC = () => {
+    const [applications, setApplications] = useState<IPOApplication[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const fetchApplications = async () => {
+        setIsLoading(true);
+        try {
+            // Reusing getIPOApplications from ipoApi which fetches all
+            // Ideally we might want a specific admin endpoint with pagination, but this works for now
+            const data = await ipoApi.getApplications();
+            setApplications(data);
+        } catch (error) {
+            console.error('Failed to fetch applications', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this application? This will unblock any held funds.')) return;
+
+        try {
+            await adminApi.deleteIPOApplication(id);
+            setApplications(prev => prev.filter(app => app.id !== id));
+        } catch (error) {
+            console.error('Failed to delete application', error);
+            alert('Failed to delete application');
+        }
+    };
+
+    useEffect(() => {
+        fetchApplications();
+    }, []);
+
+    if (isLoading) return <div className="text-slate-500">Loading applications...</div>;
+
+    return (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Applicant</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Company</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                    {applications.map((app) => (
+                        <tr key={app.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                                {app.customer?.fullName}
+                                <div className="text-xs text-slate-500">{app.customerId}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{app.companyName}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(Number(app.totalAmount))}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    ${app.status === 'verified' ? 'bg-green-100 text-green-800' :
+                                        app.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {app.status}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                {new Date(app.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                                    onClick={() => handleDelete(app.id)}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </td>
+                        </tr>
+                    ))}
+                    {applications.length === 0 && (
+                        <tr>
+                            <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No applications found</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
         </div>
     );
 };
