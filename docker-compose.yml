@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  # Central Management Database (for superadmin & tenant metadata)
+  central-db:
+    image: postgres:15-alpine
+    container_name: fintech-central-db
+    environment:
+      POSTGRES_DB: fintech_central
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_central_pass
+    ports:
+      - "5433:5432" # Different port to avoid conflict with tenant DBs
+    volumes:
+      - central-db-data:/var/lib/postgresql/data
+      - ./central-db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - fintech-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Tenant Database (example - will be created dynamically per tenant)
+  tenant-db:
+    image: postgres:15-alpine
+    container_name: fintech-tenant-db
+    environment:
+      POSTGRES_DB: fintech_tenant_default
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_tenant_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - tenant-db-data:/var/lib/postgresql/data
+    networks:
+      - fintech-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Superadmin API (for managing tenants)
+  superadmin-api:
+    build:
+      context: ./superadmin-api
+      dockerfile: Dockerfile
+    container_name: fintech-superadmin-api
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      CENTRAL_DB_HOST: central-db
+      CENTRAL_DB_PORT: 5432
+      CENTRAL_DB_NAME: fintech_central
+      CENTRAL_DB_USER: postgres
+      CENTRAL_DB_PASSWORD: postgres_central_pass
+      SUPERADMIN_JWT_SECRET: super_secret_change_in_production
+      PAYMENT_SLIPS_DIR: /app/uploads/payment_slips
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./superadmin-api:/app
+      - /app/node_modules
+      - payment-slips:/app/uploads/payment_slips
+    depends_on:
+      central-db:
+        condition: service_healthy
+    networks:
+      - fintech-network
+    command: npm run dev
+
+  # Main Backend API (tenant-aware)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fintech-backend
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      # Central DB for tenant lookup
+      CENTRAL_DB_HOST: central-db
+      CENTRAL_DB_PORT: 5432
+      CENTRAL_DB_NAME: fintech_central
+      CENTRAL_DB_USER: postgres
+      CENTRAL_DB_PASSWORD: postgres_central_pass
+      # Default tenant DB (will be overridden per request)
+      DB_HOST: tenant-db
+      DB_PORT: 5432
+      DB_NAME: fintech_tenant_default
+      DB_USER: postgres
+      DB_PASSWORD: postgres_tenant_pass
+      JWT_SECRET: your_jwt_secret_here
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      central-db:
+        condition: service_healthy
+      tenant-db:
+        condition: service_healthy
+    networks:
+      - fintech-network
+    command: npm run dev
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fintech-frontend
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_SUPERADMIN_API_URL: http://localhost:4000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - fintech-network
+    command: npm run dev
+
+  # Superadmin Frontend Portal
+  superadmin-portal:
+    build:
+      context: ./superadmin-portal
+      dockerfile: Dockerfile
+    container_name: fintech-superadmin-portal
+    environment:
+      VITE_SUPERADMIN_API_URL: http://localhost:4000
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./superadmin-portal/src:/app/src
+      - ./superadmin-portal/public:/app/public
+      - /app/node_modules
+    depends_on:
+      - superadmin-api
+    networks:
+      - fintech-network
+    command: npm run dev
+
+volumes:
+  central-db-data:
+  tenant-db-data:
+  payment-slips:
+
+
+networks:
+  fintech-network:
+    driver: bridge
