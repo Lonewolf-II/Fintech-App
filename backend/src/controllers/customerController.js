@@ -1,4 +1,4 @@
-import { Customer, Account, sequelize } from '../models/index.js';
+import { Customer, Account, CustomerCredential, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import fs from 'fs';
 import csv from 'csv-parser';
@@ -55,7 +55,8 @@ export const getCustomerById = async (req, res) => {
                 { association: 'creator', attributes: ['name'] },
                 { association: 'verifier', attributes: ['name'] },
                 { association: 'accounts' }, // Include accounts
-                { association: 'ipoApplications' } // Include IPOs
+                { association: 'ipoApplications' }, // Include IPOs
+                { association: 'credentials' } // Include credentials
             ]
         });
 
@@ -216,5 +217,64 @@ export const deleteCustomer = async (req, res) => {
     } catch (error) {
         console.error('Delete customer error:', error);
         res.status(500).json({ error: 'Failed to delete customer' });
+    }
+};
+
+// Credentials Management
+export const addCredential = async (req, res) => {
+    try {
+        const { platform, loginId, password } = req.body;
+        const customerId = req.params.id;
+
+        const credential = await CustomerCredential.create({
+            customerId,
+            platform,
+            loginId,
+            password, // NOTE: In prod, encrypt this!
+            status: 'active',
+            updatedBy: req.user.id
+        });
+
+        res.status(201).json(credential);
+    } catch (error) {
+        console.error('Add credential error:', error);
+        res.status(500).json({ error: 'Failed to add credential' });
+    }
+};
+
+export const updateCredential = async (req, res) => {
+    try {
+        const { credentialId } = req.params;
+        const credential = await CustomerCredential.findByPk(credentialId);
+
+        if (!credential) {
+            return res.status(404).json({ error: 'Credential not found' });
+        }
+
+        await credential.update({
+            ...req.body,
+            updatedBy: req.user.id
+        });
+        res.json(credential);
+    } catch (error) {
+        console.error('Update credential error:', error);
+        res.status(500).json({ error: 'Failed to update credential' });
+    }
+};
+
+export const deleteCredential = async (req, res) => {
+    try {
+        const { credentialId } = req.params;
+        const credential = await CustomerCredential.findByPk(credentialId);
+
+        if (!credential) {
+            return res.status(404).json({ error: 'Credential not found' });
+        }
+
+        await credential.destroy();
+        res.json({ message: 'Credential removed' });
+    } catch (error) {
+        console.error('Delete credential error:', error);
+        res.status(500).json({ error: 'Failed to delete credential' });
     }
 };

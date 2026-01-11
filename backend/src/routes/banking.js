@@ -3,7 +3,8 @@ import {
     getAllAccounts,
     createAccount,
     getAccountTransactions,
-    createTransaction
+    createTransaction,
+    updateAccount
 } from '../controllers/bankingController.js';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 
@@ -14,6 +15,7 @@ router.use(authMiddleware);
 // Account routes
 router.get('/accounts', requireRole('admin', 'maker', 'checker'), getAllAccounts);
 router.post('/accounts', requireRole('admin', 'maker'), createAccount);
+router.put('/accounts/:id', requireRole('admin', 'maker'), updateAccount);
 
 // Transaction routes
 router.get('/accounts/:accountId/transactions', requireRole('admin', 'maker', 'checker'), getAccountTransactions);

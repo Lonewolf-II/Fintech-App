@@ -43,9 +43,9 @@ export const createAccount = createAsyncThunk(
 
 export const fetchTransactions = createAsyncThunk(
     'banking/fetchTransactions',
-    async (accountId: string, { rejectWithValue }) => {
+    async ({ accountId, params }: { accountId: string; params?: any }, { rejectWithValue }) => {
         try {
-            return await bankingApi.getAccountTransactions(accountId);
+            return await bankingApi.getAccountTransactions(accountId, params);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.error || 'Failed to fetch transactions');
         }
@@ -59,6 +59,17 @@ export const createTransaction = createAsyncThunk(
             return await bankingApi.createTransaction(transactionData);
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.error || 'Failed to create transaction');
+        }
+    }
+);
+
+export const updateAccount = createAsyncThunk(
+    'banking/updateAccount',
+    async ({ id, updates }: { id: string; updates: Partial<Account> }, { rejectWithValue }) => {
+        try {
+            return await bankingApi.updateAccount(id, updates);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to update account');
         }
     }
 );
@@ -95,6 +106,25 @@ const bankingSlice = createSlice({
             })
             .addCase(createTransaction.fulfilled, (state, action) => {
                 state.transactions.unshift(action.payload);
+            })
+            .addCase(updateAccount.fulfilled, (state, action) => {
+                const result = action.payload as any;
+                // If it's a modification request response (has pending: true)
+                if (result.pending) {
+                    // Maybe set a global notification/message state?
+                    // For now, we don't update the account in list because it's pending
+                    return;
+                }
+
+                // If it's a direct update
+                const updatedAccount = action.payload as Account;
+                const index = state.accounts.findIndex(a => a.id === updatedAccount.id);
+                if (index !== -1) {
+                    state.accounts[index] = updatedAccount;
+                }
+                if (state.selectedAccount?.id === updatedAccount.id) {
+                    state.selectedAccount = updatedAccount;
+                }
             });
     },
 });

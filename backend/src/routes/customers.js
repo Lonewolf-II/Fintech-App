@@ -6,7 +6,10 @@ import {
     createCustomer,
     updateCustomer,
     deleteCustomer,
-    bulkCreateCustomers
+    bulkCreateCustomers,
+    addCredential,
+    updateCredential,
+    deleteCredential
 } from '../controllers/customerController.js';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 
@@ -33,5 +36,10 @@ router.put('/:id', requireRole('admin', 'maker', 'checker'), updateCustomer);
 
 // Delete customer (admin only)
 router.delete('/:id', requireRole('admin'), deleteCustomer);
+
+// Credential Routes
+router.post('/:id/credentials', requireRole('admin', 'maker'), addCredential);
+router.put('/:id/credentials/:credentialId', requireRole('admin', 'maker'), updateCredential);
+router.delete('/:id/credentials/:credentialId', requireRole('admin', 'maker'), deleteCredential);
 
 export default router;

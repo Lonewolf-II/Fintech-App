@@ -7,6 +7,8 @@ import Portfolio from './Portfolio.js';
 import Holding from './Holding.js';
 import IPOApplication from './IPOApplication.js';
 import IPOListing from './IPOListing.js';
+import CustomerCredential from './CustomerCredential.js';
+import ModificationRequest from './ModificationRequest.js';
 
 // User - Customer associations
 User.hasMany(Customer, { foreignKey: 'createdBy', as: 'createdCustomers' });
@@ -34,6 +36,16 @@ Holding.belongsTo(Portfolio, { foreignKey: 'portfolioId', as: 'portfolio' });
 Customer.hasMany(IPOApplication, { foreignKey: 'customerId', as: 'ipoApplications' });
 IPOApplication.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
 
+// Customer - CustomerCredential associations
+Customer.hasMany(CustomerCredential, { foreignKey: 'customerId', as: 'credentials' });
+CustomerCredential.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+
+// ModificationRequest associations
+User.hasMany(ModificationRequest, { foreignKey: 'requestedBy', as: 'requestedModifications' });
+ModificationRequest.belongsTo(User, { foreignKey: 'requestedBy', as: 'requester' });
+User.hasMany(ModificationRequest, { foreignKey: 'reviewedBy', as: 'reviewedModifications' });
+ModificationRequest.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
+
 export {
     sequelize,
     User,
@@ -43,5 +55,7 @@ export {
     Portfolio,
     Holding,
     IPOApplication,
-    IPOListing
+    IPOListing,
+    CustomerCredential,
+    ModificationRequest
 };

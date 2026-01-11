@@ -116,6 +116,17 @@ export const addBankAccount = createAsyncThunk(
     }
 );
 
+export const addCustomerCredential = createAsyncThunk(
+    'customers/addCredential',
+    async ({ customerId, credentialData }: { customerId: string; credentialData: any }, { rejectWithValue }) => {
+        try {
+            return await customerApi.addCredential(customerId, credentialData);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to add credential');
+        }
+    }
+);
+
 const customerSlice = createSlice({
     name: 'customers',
     initialState,
@@ -251,6 +262,15 @@ const customerSlice = createSlice({
             .addCase(addBankAccount.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
+            })
+            // Add Credential
+            .addCase(addCustomerCredential.fulfilled, (state, action) => {
+                if (state.selectedCustomer) {
+                    if (!state.selectedCustomer.credentials) {
+                        state.selectedCustomer.credentials = [];
+                    }
+                    state.selectedCustomer.credentials.push(action.payload);
+                }
             });
     },
 });

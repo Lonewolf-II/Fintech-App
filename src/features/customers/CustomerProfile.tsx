@@ -4,9 +4,12 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchCustomer } from './customerSlice';
 import { IPOApplicationForm } from './components/IPOApplicationForm';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
-import { User, Shield, Plus } from 'lucide-react';
+import { User, Shield, Plus, Key, Lock, Edit } from 'lucide-react';
 import { AddBankAccountModal } from './components/AddBankAccountModal';
+import { AddCredentialModal } from './components/AddCredentialModal';
 import { Button } from '../../components/common/Button';
+import { EditAccountModal } from './components/EditAccountModal';
+
 import { Modal } from '../../components/common/Modal';
 import type { Account } from '../../types/business.types';
 
@@ -14,8 +17,10 @@ export const CustomerProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const dispatch = useAppDispatch();
     const { selectedCustomer, isLoading, error } = useAppSelector((state) => state.customers);
-    const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'portfolio'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'portfolio' | 'credentials'>('overview');
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
+    const [isAddCredentialModalOpen, setIsAddCredentialModalOpen] = useState(false);
+    const [isEditAccountModalOpen, setIsEditAccountModalOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
     useEffect(() => {
@@ -30,6 +35,7 @@ export const CustomerProfile: React.FC = () => {
 
     const accounts = selectedCustomer.accounts || [];
     const ipoApplications = selectedCustomer.ipoApplications || [];
+    const credentials = selectedCustomer.credentials || [];
 
     return (
         <div className="p-6 space-y-6">
@@ -53,27 +59,34 @@ export const CustomerProfile: React.FC = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-slate-200">
+            <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     Overview
                 </button>
                 <button
                     onClick={() => setActiveTab('accounts')}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'accounts' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'accounts' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     Bank Accounts
                 </button>
                 <button
                     onClick={() => setActiveTab('portfolio')}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'portfolio' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'portfolio' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     Portfolio & IPO
+                </button>
+                <button
+                    onClick={() => setActiveTab('credentials')}
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'credentials' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    Credentials
                 </button>
             </div>
 
@@ -221,12 +234,71 @@ export const CustomerProfile: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'credentials' && (
+                    <div className="bg-white rounded-lg shadow overflow-hidden">
+                        <div className="p-4 border-b flex justify-between items-center">
+                            <h3 className="text-lg font-semibold text-slate-900">Login Credentials</h3>
+                            <Button size="sm" onClick={() => setIsAddCredentialModalOpen(true)}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Credential
+                            </Button>
+                        </div>
+                        <div className="p-4">
+                            {credentials.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {credentials.map((cred) => (
+                                        <div key={cred.id} className="border rounded-lg p-4 bg-slate-50 hover:shadow-md transition-shadow">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className="p-2 bg-blue-100 rounded-lg">
+                                                    <Key className="w-5 h-5 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-slate-900 capitalize">{cred.platform.replace('_', ' ')}</h4>
+                                                    <p className="text-xs text-slate-500">Updated: {formatDateTime(cred.updatedAt || new Date().toISOString())}</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="text-sm">
+                                                    <span className="text-slate-500 block text-xs">Login ID</span>
+                                                    <span className="font-mono bg-white px-2 py-1 rounded border block mt-1">{cred.loginId}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-slate-500 block text-xs">Password</span>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="font-mono bg-white px-2 py-1 rounded border block flex-1">{cred.password}</span>
+                                                        <Lock className="w-4 h-4 text-slate-400" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-slate-500">
+                                    <Key className="w-12 h-12 mx-auto text-slate-300 mb-2" />
+                                    No credentials added yet
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
+
             {/* Add Bank Account Modal */}
             {selectedCustomer && (
                 <AddBankAccountModal
                     isOpen={isAddAccountModalOpen}
                     onClose={() => setIsAddAccountModalOpen(false)}
+                    customerId={selectedCustomer.id}
+                />
+            )}
+
+            {/* Add Credential Modal */}
+            {selectedCustomer && (
+                <AddCredentialModal
+                    isOpen={isAddCredentialModalOpen}
+                    onClose={() => setIsAddCredentialModalOpen(false)}
                     customerId={selectedCustomer.id}
                 />
             )}
@@ -251,7 +323,7 @@ export const CustomerProfile: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-sm text-slate-500">Bank Name</label>
-                                <p className="font-medium text-slate-900">{selectedAccount.bankName || '-'}</p>
+                                <p className="font-medium text-slate-900">{selectedAccount.accountName || '-'}</p>
                             </div>
                             <div>
                                 <label className="text-sm text-slate-500">Branch</label>
@@ -276,8 +348,31 @@ export const CustomerProfile: React.FC = () => {
                                 <p className="font-medium text-slate-900">{selectedAccount.openingDate || '-'}</p>
                             </div>
                         </div>
+
+                        <div className="flex justify-end pt-4 border-t">
+                            <Button
+                                onClick={() => {
+                                    // Close details, open edit (selectedAccount remains set)
+                                    setIsEditAccountModalOpen(true);
+                                }}
+                            >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Account
+                            </Button>
+                        </div>
                     </div>
                 </Modal>
+            )}
+
+            {/* Edit Account Modal */}
+            {selectedAccount && (
+                <EditAccountModal
+                    isOpen={isEditAccountModalOpen}
+                    onClose={() => {
+                        setIsEditAccountModalOpen(false);
+                    }}
+                    account={selectedAccount}
+                />
             )}
         </div>
     );

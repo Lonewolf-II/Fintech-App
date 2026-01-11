@@ -1,6 +1,7 @@
 import Account from '../models/Account.js';
 import Transaction from '../models/Transaction.js';
-import { Customer } from '../models/index.js';
+import { Customer, ModificationRequest } from '../models/index.js';
+import { Op } from 'sequelize';
 
 // Get all accounts
 export const getAllAccounts = async (req, res) => {
@@ -46,10 +47,23 @@ export const createAccount = async (req, res) => {
 // Get transactions for an account
 export const getAccountTransactions = async (req, res) => {
     try {
+        const { startDate, endDate, type } = req.query;
+        const whereClause = { accountId: req.params.accountId };
+
+        if (startDate && endDate) {
+            whereClause.createdAt = {
+                [Op.between]: [new Date(startDate), new Date(endDate)]
+            };
+        }
+
+        if (type && type !== 'all') {
+            whereClause.transactionType = type;
+        }
+
         const transactions = await Transaction.findAll({
-            where: { accountId: req.params.accountId },
+            where: whereClause,
             order: [['createdAt', 'DESC']],
-            limit: 50
+            limit: 100 // Increased limit for statement view
         });
         res.json(transactions);
     } catch (error) {
@@ -94,5 +108,38 @@ export const createTransaction = async (req, res) => {
     } catch (error) {
         console.error('Create transaction error:', error);
         res.status(500).json({ error: 'Failed to create transaction' });
+    }
+};
+
+// Update account (Maker-Checker)
+export const updateAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const account = await Account.findByPk(id);
+
+        if (!account) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+
+        // Check for Maker role
+        if (req.user.role === 'maker') {
+            await ModificationRequest.create({
+                targetModel: 'Account',
+                targetId: id,
+                requestedChanges: updates,
+                changeType: 'update',
+                status: 'pending',
+                requestedBy: req.user.id
+            });
+            return res.json({ message: 'Modification request submitted for approval', pending: true });
+        }
+
+        // Admin/Checker/Other can update directly
+        await account.update(updates);
+        res.json(account);
+    } catch (error) {
+        console.error('Update account error:', error);
+        res.status(500).json({ error: 'Failed to update account' });
     }
 };

@@ -15,6 +15,7 @@ import customerRoutes from './routes/customers.js';
 import bankingRoutes from './routes/banking.js';
 import portfolioRoutes from './routes/portfolio.js';
 import ipoRoutes from './routes/ipo.js';
+import checkerRoutes from './routes/checker.js';
 
 dotenv.config();
 
@@ -24,7 +25,25 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Allow any localhost origin (for development)
+        if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+            return callback(null, true);
+        }
+
+        // In production, check against FRONTEND_URL
+        if (process.env.FRONTEND_URL) {
+            const allowedOrigins = process.env.FRONTEND_URL.split(',');
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+        }
+
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true
 }));
 app.use(morgan('dev'));
@@ -50,6 +69,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/banking', bankingRoutes);
 app.use('/api/portfolio', requireFeature('portfolio'), portfolioRoutes);
 app.use('/api/ipo', requireFeature('ipo'), ipoRoutes);
+app.use('/api/checker', checkerRoutes);
 
 
 // 404 handler

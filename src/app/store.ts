@@ -4,6 +4,7 @@ import userManagementReducer from '../features/admin/userSlice';
 import customerReducer from '../features/customers/customerSlice';
 import bankingReducer from '../features/banking/bankingSlice';
 import portfolioReducer from '../features/portfolio/portfolioSlice';
+import checkerReducer from '../features/checker/checkerSlice';
 
 export const store = configureStore({
     reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
         customers: customerReducer,
         banking: bankingReducer,
         portfolio: portfolioReducer,
+        checker: checkerReducer,
     },
 });
 

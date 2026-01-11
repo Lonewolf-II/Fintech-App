@@ -15,6 +15,19 @@ export interface Customer {
     // Relations
     accounts?: Account[];
     ipoApplications?: IPOApplication[];
+    credentials?: CustomerCredential[];
+}
+
+export interface CustomerCredential {
+    id: string;
+    customerId: string;
+    platform: 'mobile_banking' | 'meroshare' | 'tms';
+    loginId: string;
+    password?: string;
+    status: 'active' | 'inactive' | 'locked';
+    updatedBy?: number;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface Account {

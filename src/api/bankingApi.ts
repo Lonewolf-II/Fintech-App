@@ -21,9 +21,14 @@ export const bankingApi = {
         return response.data;
     },
 
+    updateAccount: async (id: string, updates: Partial<Account>): Promise<Account | { message: string, pending: boolean }> => {
+        const response = await apiClient.put(`/banking/accounts/${id}`, updates);
+        return response.data;
+    },
+
     // Transactions
-    getAccountTransactions: async (accountId: string): Promise<Transaction[]> => {
-        const response = await apiClient.get(`/banking/accounts/${accountId}/transactions`);
+    getAccountTransactions: async (accountId: string, params?: any): Promise<Transaction[]> => {
+        const response = await apiClient.get(`/banking/accounts/${accountId}/transactions`, { params });
         return response.data;
     },
 

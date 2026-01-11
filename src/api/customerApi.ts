@@ -36,4 +36,9 @@ export const customerApi = {
         });
         return response.data;
     },
+
+    addCredential: async (customerId: string, credentialData: any): Promise<any> => {
+        const response = await apiClient.post(`/customers/${customerId}/credentials`, credentialData);
+        return response.data;
+    },
 };
