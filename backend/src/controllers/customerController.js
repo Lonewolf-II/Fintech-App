@@ -54,9 +54,13 @@ export const getCustomerById = async (req, res) => {
             include: [
                 { association: 'creator', attributes: ['name'] },
                 { association: 'verifier', attributes: ['name'] },
-                { association: 'accounts' }, // Include accounts
-                { association: 'ipoApplications' }, // Include IPOs
-                { association: 'credentials' } // Include credentials
+                { association: 'accounts' },
+                { association: 'ipoApplications' },
+                {
+                    association: 'portfolios',
+                    include: [{ association: 'holdings' }]
+                },
+                { association: 'credentials' }
             ]
         });
 
@@ -64,7 +68,35 @@ export const getCustomerById = async (req, res) => {
             return res.status(404).json({ error: 'Customer not found' });
         }
 
-        res.json(customer);
+        // Fetch pending modification requests
+        const accountIds = (customer.accounts || []).map(a => a.id);
+        const ipoIds = (customer.ipoApplications || []).map(i => i.id);
+        const portfolioIds = (customer.portfolios || []).map(p => p.id);
+        let holdingIds = [];
+        if (customer.portfolios) {
+            customer.portfolios.forEach(p => {
+                if (p.holdings) {
+                    holdingIds = [...holdingIds, ...p.holdings.map(h => h.id)];
+                }
+            });
+        }
+
+        const pendingRequests = await ModificationRequest.findAll({
+            where: {
+                status: 'pending',
+                [Op.or]: [
+                    { targetModel: 'Customer', targetId: customer.id },
+                    { targetModel: 'Account', targetId: { [Op.in]: accountIds } },
+                    { targetModel: 'IPOApplication', targetId: { [Op.in]: ipoIds } },
+                    { targetModel: 'Holding', targetId: { [Op.in]: holdingIds } }
+                ]
+            }
+        });
+
+        const customerData = customer.toJSON();
+        customerData.pendingRequests = pendingRequests;
+
+        res.json(customerData);
     } catch (error) {
         console.error('Get customer error:', error);
         res.status(500).json({ error: 'Failed to fetch customer' });

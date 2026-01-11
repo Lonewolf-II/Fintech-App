@@ -3,9 +3,12 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, User, LoginCredentials } from '../../types/auth.types';
 import { authApi } from '../../api/authApi';
 
+const storedUser = localStorage.getItem('user');
+const storedToken = localStorage.getItem('token');
+
 const initialState: AuthState = {
-    user: null,
-    isAuthenticated: false,
+    user: storedUser ? JSON.parse(storedUser) : null,
+    isAuthenticated: !!storedToken,
     isLoading: false,
     error: null,
 };

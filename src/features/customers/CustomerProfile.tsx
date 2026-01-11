@@ -4,14 +4,16 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchCustomer, updateIPOApplication, deleteIPOApplication } from './customerSlice';
 import { IPOApplicationForm } from './components/IPOApplicationForm';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
-import { User, Shield, Plus, Key, Lock, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { User, Shield, Plus, Key, Lock, Edit, Trash2 } from 'lucide-react';
 import { AddBankAccountModal } from './components/AddBankAccountModal';
 import { AddCredentialModal } from './components/AddCredentialModal';
+
 import { Button } from '../../components/common/Button';
 import { EditAccountModal } from './components/EditAccountModal';
 import { actionRequest } from '../checker/checkerSlice';
 import { toast } from 'react-hot-toast';
-import { fetchHoldings, updateHolding, deleteHolding } from '../portfolio/portfolioSlice';
+import { fetchPortfolios } from '../portfolio/portfolioSlice';
+import { PortfolioHoldingsTable } from './components/PortfolioHoldingsTable';
 
 import { Modal } from '../../components/common/Modal';
 import type { Account } from '../../types/business.types';
@@ -30,6 +32,7 @@ export const CustomerProfile: React.FC = () => {
     useEffect(() => {
         if (id) {
             dispatch(fetchCustomer(id));
+            dispatch(fetchPortfolios());
         }
     }, [dispatch, id]);
 
@@ -230,14 +233,47 @@ export const CustomerProfile: React.FC = () => {
                         <div className="bg-white rounded-lg shadow overflow-hidden">
                             <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                                 <h3 className="text-lg font-semibold text-slate-900">Portfolio Holdings</h3>
-                                <Button size="sm" onClick={() => { /* Add Holding Modal? */ }}>
+                                <Button size="sm" onClick={() => {
+                                    // For now, just a placeholder or could open a simplified add modal
+                                    toast.success("Feature coming soon");
+                                }}>
                                     <Plus className="w-4 h-4 mr-2" />
                                     Add Holding
                                 </Button>
                             </div>
-                            {/* Holdings Table - Placeholder for now as we focus on IPO */}
-                            <div className="p-6 text-center text-slate-500">
-                                Portfolio Holdings functionality coming soon.
+
+                            {/* Holdings Table */}
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-slate-200">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Symbol</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qty</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Avg Price</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Current</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Value</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">P/L</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-slate-200">
+                                        {/* We need to fetch holdings. Since we don't have them in selectedCustomer, 
+                                                we ideally should have fetched them. 
+                                                For this implementation, let's assume we dispatch fetchHoldings if we have a portfolio ID 
+                                             */}
+                                        {/* Note: Ideally we fetch this on tab change or if selectedCustomer has portfolioId used to find holdings. 
+                                                If we don't have state.portfolio.holdings here, we need to map it. 
+                                                Let's assume for now we use a specialized component or just render if we had them.
+                                                
+                                                Wait, I need to connect to state.portfolio.holdings
+                                            */}
+                                        <PortfolioHoldingsTable
+                                            customerId={selectedCustomer.id}
+                                            pendingRequests={selectedCustomer.pendingRequests || []}
+                                        />
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
@@ -267,67 +303,83 @@ export const CustomerProfile: React.FC = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-slate-200">
-                                                {ipoApplications.map((app) => (
-                                                    <tr key={app.id}>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{app.companyName}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{app.quantity}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(Number(app.totalAmount))}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${app.status === 'verified' ? 'bg-green-100 text-green-800' :
-                                                                app.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                                    app.status === 'allotted' ? 'bg-blue-100 text-blue-800' :
-                                                                        'bg-yellow-100 text-yellow-800'
-                                                                }`}>
-                                                                {app.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                                            {formatDateTime(app.createdAt)}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                            <div className="flex justify-end gap-2">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const newQty = prompt("Enter new quantity:", String(app.quantity));
-                                                                        if (newQty && !isNaN(Number(newQty))) {
-                                                                            dispatch(updateIPOApplication({
-                                                                                id: app.id,
-                                                                                data: { quantity: Number(newQty), totalAmount: Number(newQty) * Number(app.pricePerShare) }
-                                                                            }))
-                                                                                .unwrap()
-                                                                                .then((res) => {
-                                                                                    if (res.pending) toast.success("Modification Request Sent");
-                                                                                    else toast.success("Updated Successfully");
-                                                                                    dispatch(fetchCustomer(selectedCustomer.id));
-                                                                                })
-                                                                                .catch(err => toast.error(err));
-                                                                        }
-                                                                    }}
-                                                                    className="text-blue-600 hover:text-blue-900"
-                                                                >
-                                                                    <Edit className="w-4 h-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        if (confirm("Are you sure you want to delete this application?")) {
-                                                                            dispatch(deleteIPOApplication(app.id))
-                                                                                .unwrap()
-                                                                                .then((res) => {
-                                                                                    if (res.pending) toast.success("Deletion Request Sent");
-                                                                                    else toast.success("Deleted Successfully");
-                                                                                    dispatch(fetchCustomer(selectedCustomer.id));
-                                                                                })
-                                                                                .catch(err => toast.error(err));
-                                                                        }
-                                                                    }}
-                                                                    className="text-red-600 hover:text-red-900"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                {ipoApplications.map((app) => {
+                                                    const pendingRequest = selectedCustomer.pendingRequests?.find(
+                                                        r => r.targetModel === 'IPOApplication' && r.targetId === app.id && r.status === 'pending'
+                                                    );
+                                                    const isPending = !!pendingRequest;
+
+                                                    return (
+                                                        <tr key={app.id} className={isPending ? "bg-yellow-50" : ""}>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                                                                {app.companyName}
+                                                                {isPending && (
+                                                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                        {pendingRequest?.changeType === 'delete' ? 'Deletion Pending' : 'Update Pending'}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{app.quantity}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(Number(app.totalAmount))}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${app.status === 'verified' ? 'bg-green-100 text-green-800' :
+                                                                    app.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                                        app.status === 'allotted' ? 'bg-blue-100 text-blue-800' :
+                                                                            'bg-yellow-100 text-yellow-800'
+                                                                    }`}>
+                                                                    {app.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                                                {formatDateTime(app.createdAt)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <button
+                                                                        disabled={isPending}
+                                                                        onClick={() => {
+                                                                            const newQty = prompt("Enter new quantity:", String(app.quantity));
+                                                                            if (newQty && !isNaN(Number(newQty))) {
+                                                                                dispatch(updateIPOApplication({
+                                                                                    id: app.id,
+                                                                                    data: { quantity: Number(newQty), totalAmount: Number(newQty) * Number(app.pricePerShare) }
+                                                                                }))
+                                                                                    .unwrap()
+                                                                                    .then((res) => {
+                                                                                        if (res.pending) toast.success("Modification Request Sent");
+                                                                                        else toast.success("Updated Successfully");
+                                                                                        dispatch(fetchCustomer(selectedCustomer.id));
+                                                                                    })
+                                                                                    .catch(err => toast.error(err));
+                                                                            }
+                                                                        }}
+                                                                        className={`text-blue-600 hover:text-blue-900 ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        <Edit className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        disabled={isPending}
+                                                                        onClick={() => {
+                                                                            if (confirm("Are you sure you want to delete this application?")) {
+                                                                                dispatch(deleteIPOApplication(app.id))
+                                                                                    .unwrap()
+                                                                                    .then((res) => {
+                                                                                        if (res.pending) toast.success("Deletion Request Sent");
+                                                                                        else toast.success("Deleted Successfully");
+                                                                                        dispatch(fetchCustomer(selectedCustomer.id));
+                                                                                    })
+                                                                                    .catch(err => toast.error(err));
+                                                                            }
+                                                                        }}
+                                                                        className={`text-red-600 hover:text-red-900 ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                                 {ipoApplications.length === 0 && (
                                                     <tr>
                                                         <td colSpan={6} className="px-6 py-4 text-center text-slate-500">No applications yet</td>

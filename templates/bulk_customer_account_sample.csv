@@ -1,0 +1,4 @@
+name,dateOfBirth,contact,email,accountType
+John Doe,1990-05-15,9841000000,john.doe@example.com,individual
+Jane Smith,1985-11-20,9841111111,jane.smith@example.com,individual
+Acme Corp,2000-01-01,014445555,info@acme.com,corporate

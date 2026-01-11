@@ -74,6 +74,24 @@ const navigationItems: NavItem[] = [
         roles: ['admin'],
     },
     {
+        label: 'Investors',
+        icon: <Users className="w-5 h-5" />,
+        path: '/investors',
+        roles: ['admin'],
+    },
+    {
+        label: 'Categories',
+        icon: <Briefcase className="w-5 h-5" />,
+        path: '/categories',
+        roles: ['admin'],
+    },
+    {
+        label: 'Investments',
+        icon: <TrendingUp className="w-5 h-5" />,
+        path: '/investments',
+        roles: ['admin'],
+    },
+    {
         label: 'Pending Verification',
         icon: <CheckCircle className="w-5 h-5" />,
         path: '/verification',

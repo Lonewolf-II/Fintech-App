@@ -23,6 +23,9 @@ import { PendingModifications } from './features/checker/PendingModifications';
 import { PendingVerification } from './features/checker/PendingVerification';
 import { PendingApprovals } from './features/checker/PendingApprovals';
 import { IPOApplications } from './features/checker/IPOApplications';
+import { InvestorManagement } from './features/investor/InvestorManagement';
+import { CategoryManagement } from './features/investor/CategoryManagement';
+import { InvestmentManagement } from './features/investor/InvestmentManagement';
 
 // Root redirect component
 const RootRedirect: React.FC = () => {
@@ -65,6 +68,9 @@ function AppRoutes() {
                 <Route path="portfolio" element={<PortfolioDashboard />} />
                 <Route path="ipo-applications" element={<div>IPO Applications List (Coming Soon)</div>} />
                 <Route path="ipo" element={<IPOManagement />} />
+                <Route path="investors" element={<InvestorManagement />} />
+                <Route path="categories" element={<CategoryManagement />} />
+                <Route path="investments" element={<InvestmentManagement />} />
                 <Route path="settings" element={<div>Settings Page (Coming Soon)</div>} />
               </Routes>
             </DashboardLayout>

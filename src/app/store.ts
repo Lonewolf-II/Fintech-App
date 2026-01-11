@@ -6,6 +6,7 @@ import bankingReducer from '../features/banking/bankingSlice';
 import portfolioReducer from '../features/portfolio/portfolioSlice';
 import checkerReducer from '../features/checker/checkerSlice';
 import adminReducer from '../features/admin/adminSlice';
+import investorReducer from '../features/investor/investorSlice';
 
 export const store = configureStore({
     reducer: {
@@ -15,7 +16,8 @@ export const store = configureStore({
         banking: bankingReducer,
         portfolio: portfolioReducer,
         checker: checkerReducer,
-        admin: adminReducer
+        admin: adminReducer,
+        investor: investorReducer
     },
 });
 

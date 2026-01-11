@@ -13,9 +13,25 @@ export interface Customer {
     createdAt?: string;
     updatedAt?: string;
     // Relations
+    // Relations
     accounts?: Account[];
     ipoApplications?: IPOApplication[];
     credentials?: CustomerCredential[];
+    pendingRequests?: ModificationRequest[];
+}
+
+export interface ModificationRequest {
+    id: string;
+    targetModel: 'Customer' | 'Account' | 'IPOApplication' | 'Holding';
+    targetId: string;
+    requestedChanges: any;
+    changeType: 'update' | 'delete' | 'create';
+    status: 'pending' | 'approved' | 'rejected';
+    requestedBy: number;
+    reviewedBy?: number;
+    rejectionReason?: string;
+    createdAt: string;
+    updatedAt?: string;
 }
 
 export interface CustomerCredential {

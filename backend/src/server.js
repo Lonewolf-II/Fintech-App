@@ -17,6 +17,9 @@ import portfolioRoutes from './routes/portfolio.js';
 import ipoRoutes from './routes/ipo.js';
 import checkerRoutes from './routes/checker.js';
 import adminRoutes from './routes/admin.js';
+import investorRoutes from './routes/investor.js';
+import categoryRoutes from './routes/category.js';
+import investmentRoutes from './routes/investment.js';
 
 dotenv.config();
 
@@ -72,6 +75,10 @@ app.use('/api/portfolio', requireFeature('portfolio'), portfolioRoutes);
 app.use('/api/ipo', requireFeature('ipo'), ipoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/checker', checkerRoutes);
+app.use('/api', investorRoutes);
+app.use('/api', categoryRoutes);
+app.use('/api', investmentRoutes);
+
 
 
 // 404 handler
