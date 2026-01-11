@@ -1,4 +1,4 @@
-import { Tenant, License, IPWhitelist } from '../../../central-db/index.js';
+import { Tenant, License, IPWhitelist } from '../../central-db/index.js';
 import { getTenantDatabase, initializeTenantModels } from '../config/tenantDatabase.js';
 
 // Middleware to extract and validate tenant context
@@ -9,12 +9,21 @@ export async function tenantContext(req, res, next) {
 
         // Method 1: From subdomain (e.g., acme.yourapp.com)
         const host = req.get('host');
+        console.log('🔍 [TenantContext] Host:', host);
+        console.log('🔍 [TenantContext] X-Tenant-Key:', req.get('X-Tenant-Key'));
+
         if (host) {
-            const subdomain = host.split('.')[0];
+            // Strip port number if present (e.g., localhost:5000 -> localhost)
+            const hostname = host.split(':')[0];
+            const subdomain = hostname.split('.')[0];
+            console.log('🔍 [TenantContext] Extracted hostname:', hostname, 'subdomain:', subdomain);
+
             if (subdomain && subdomain !== 'localhost' && subdomain !== 'www') {
                 tenantKey = subdomain;
             }
         }
+
+        if (tenantKey) console.log('🔍 [TenantContext] Resolved tenantKey from subdomain:', tenantKey);
 
         // Method 2: From custom header (for development/testing)
         if (!tenantKey && req.get('X-Tenant-Key')) {
@@ -28,6 +37,8 @@ export async function tenantContext(req, res, next) {
             });
         }
 
+        console.log('🔍 [TenantContext] Querying central DB for tenantKey/subdomain:', tenantKey);
+
         // Fetch tenant from central database
         const tenant = await Tenant.findOne({
             where: { subdomain: tenantKey },
@@ -37,8 +48,10 @@ export async function tenantContext(req, res, next) {
         });
 
         if (!tenant) {
+            console.error('❌ [TenantContext] Tenant not found in DB for key:', tenantKey);
             return res.status(404).json({ error: 'Tenant not found' });
         }
+        console.log('✅ [TenantContext] Found tenant:', tenant.companyName);
 
         // Check tenant status
         if (tenant.status === 'suspended') {

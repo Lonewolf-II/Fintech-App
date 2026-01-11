@@ -9,22 +9,13 @@ import PaymentSubmissionModel from './models/PaymentSubmission.js';
 import PaymentVerificationModel from './models/PaymentVerification.js';
 import AuditLogModel from './models/AuditLog.js';
 
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Try to load .env from parent directory first (when used in superadmin-api or backend)
-// Then fall back to current directory
-dotenv.config({ path: join(__dirname, '../.env') });
 dotenv.config();
 
 // Central Management Database Connection
 const centralSequelize = new Sequelize(
     process.env.CENTRAL_DB_NAME || 'fintech_central',
-    process.env.CENTRAL_DB_USER || 'postgres',
-    process.env.CENTRAL_DB_PASSWORD || 'postgres',
+    process.env.CENTRAL_DB_USER || 'fintech_user',
+    process.env.CENTRAL_DB_PASSWORD || 'fintech_password',
     {
         host: process.env.CENTRAL_DB_HOST || 'localhost',
         port: process.env.CENTRAL_DB_PORT || 5432,

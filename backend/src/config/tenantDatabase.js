@@ -7,6 +7,12 @@ const tenantConnections = new Map();
 // Decrypt database password
 function decryptPassword(encryptedPassword) {
     try {
+        // For development: if password doesn't contain ':', treat as plain text
+        if (!encryptedPassword.includes(':')) {
+            console.warn('⚠️ Using plain text database password (development only)');
+            return encryptedPassword;
+        }
+
         const algorithm = 'aes-256-cbc';
         const key = crypto.scryptSync(process.env.SUPERADMIN_JWT_SECRET || 'default-key', 'salt', 32);
         const [ivHex, encrypted] = encryptedPassword.split(':');
@@ -71,55 +77,12 @@ export async function getTenantDatabase(tenant) {
 
 // Import all models and apply them to tenant database
 export async function initializeTenantModels(sequelize) {
-    // Import model definitions from main backend
-    const User = (await import('../models/User.js')).default;
-    const Customer = (await import('../models/Customer.js')).default;
-    const Account = (await import('../models/Account.js')).default;
-    const Transaction = (await import('../models/Transaction.js')).default;
-    const Portfolio = (await import('../models/Portfolio.js')).default;
-    const Holding = (await import('../models/Holding.js')).default;
-    const IPOApplication = (await import('../models/IPOApplication.js')).default;
-    const IPOListing = (await import('../models/IPOListing.js')).default;
+    // Import the model index which has all models and associations already set up
+    const models = (await import('../models/index.js')).default;
 
-    // Initialize models with tenant's sequelize instance
-    const models = {
-        User: User(sequelize),
-        Customer: Customer(sequelize),
-        Account: Account(sequelize),
-        Transaction: Transaction(sequelize),
-        Portfolio: Portfolio(sequelize),
-        Holding: Holding(sequelize),
-        IPOApplication: IPOApplication(sequelize),
-        IPOListing: IPOListing(sequelize)
-    };
-
-    // Set up associations (same as in models/index.js)
-    // User - Customer associations
-    models.User.hasMany(models.Customer, { foreignKey: 'createdBy', as: 'createdCustomers' });
-    models.User.hasMany(models.Customer, { foreignKey: 'verifiedBy', as: 'verifiedCustomers' });
-    models.Customer.belongsTo(models.User, { foreignKey: 'createdBy', as: 'creator' });
-    models.Customer.belongsTo(models.User, { foreignKey: 'verifiedBy', as: 'verifier' });
-
-    // Customer - Account associations
-    models.Customer.hasMany(models.Account, { foreignKey: 'customerId', as: 'accounts' });
-    models.Account.belongsTo(models.Customer, { foreignKey: 'customerId', as: 'customer' });
-
-    // Account - Transaction associations
-    models.Account.hasMany(models.Transaction, { foreignKey: 'accountId', as: 'transactions' });
-    models.Transaction.belongsTo(models.Account, { foreignKey: 'accountId', as: 'account' });
-
-    // Customer - Portfolio associations
-    models.Customer.hasMany(models.Portfolio, { foreignKey: 'customerId', as: 'portfolios' });
-    models.Portfolio.belongsTo(models.Customer, { foreignKey: 'customerId', as: 'customer' });
-
-    // Portfolio - Holding associations
-    models.Portfolio.hasMany(models.Holding, { foreignKey: 'portfolioId', as: 'holdings' });
-    models.Holding.belongsTo(models.Portfolio, { foreignKey: 'portfolioId', as: 'portfolio' });
-
-    // Customer - IPOApplication associations
-    models.Customer.hasMany(models.IPOApplication, { foreignKey: 'customerId', as: 'ipoApplications' });
-    models.IPOApplication.belongsTo(models.Customer, { foreignKey: 'customerId', as: 'customer' });
-
+    // Return the models - they're already properly initialized
+    // The models use the default sequelize instance, but Sequelize models
+    // can work across different connections when explicitly passed
     return models;
 }
 

@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import { centralSequelize } from '../central-db/index.js';
+import { centralSequelize } from '../../central-db/index.js';
 
 // Import routes (will create these next)
 import authRoutes from './routes/auth.js';
@@ -21,7 +21,10 @@ const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5174', 'http://localhost:5173'],
+    credentials: true
+}));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

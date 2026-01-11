@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/tool
 import { customerApi } from '../../api/customerApi';
 import { bankingApi } from '../../api/bankingApi';
 import { ipoApi, type ApplyIPOPayload } from '../../api/ipoApi';
-import type { Customer, Account } from '../../types/business.types';
+import type { Customer } from '../../types/business.types';
 
 interface CustomerState {
     customers: Customer[];

@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "vite",
     "dev:backend": "npm run dev --prefix backend",
-    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
+    "dev:superadmin": "concurrently \"npm run dev --prefix superadmin-portal\" \"npm run dev --prefix superadmin-api\"",
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\" \"npm run dev:superadmin\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
