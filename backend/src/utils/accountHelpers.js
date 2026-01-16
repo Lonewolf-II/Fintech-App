@@ -135,8 +135,9 @@ export const validateCustomerRow = (row, rowIndex) => {
         errors.push(`Row ${rowIndex}: Customer must be at least 18 years old`);
     }
 
-    if (!row['Bank Name'] || row['Bank Name'].trim() === '') {
-        errors.push(`Row ${rowIndex}: Bank Name is required`);
+    // Bank Name is optional if no account is created
+    if (row['Bank Name'] && row['Bank Name'].trim() !== '') {
+        // Optional validation if needed
     }
 
     return {

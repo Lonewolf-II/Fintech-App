@@ -24,6 +24,10 @@ export const createAccount = async (req, res) => {
     try {
         const { customerId, accountType, bankName, branch, accountName, accountNumber, status } = req.body;
 
+        // Check if customer has existing accounts to determine isPrimary
+        const existingAccountCount = await Account.count({ where: { customerId } });
+        const isPrimary = existingAccountCount === 0;
+
         // Use provided account number or generate one
         const finalAccountNumber = accountNumber || `ACC-${Date.now()}`;
 
@@ -36,7 +40,8 @@ export const createAccount = async (req, res) => {
             accountName,
             balance: 0,
             currency: 'NPR',
-            status: status || 'active'
+            status: status || 'active',
+            isPrimary
         });
 
         res.status(201).json(account);
@@ -62,12 +67,23 @@ export const getAccountTransactions = async (req, res) => {
             whereClause.transactionType = type;
         }
 
-        const transactions = await Transaction.findAll({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 25;
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await Transaction.findAndCountAll({
             where: whereClause,
             order: [['created_at', 'DESC']],
-            limit: 100 // Increased limit for statement view
+            limit,
+            offset
         });
-        res.json(transactions);
+
+        res.json({
+            transactions: rows,
+            total: count,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page
+        });
     } catch (error) {
         console.error('Get transactions error:', error);
         res.status(500).json({ error: 'Failed to fetch transactions' });

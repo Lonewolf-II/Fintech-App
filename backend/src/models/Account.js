@@ -8,7 +8,7 @@ const Account = sequelize.define('Account', {
         autoIncrement: true
     },
     accountNumber: {
-        type: DataTypes.STRING(13),
+        type: DataTypes.STRING(50),
         unique: true,
         allowNull: false,
         field: 'account_number'
@@ -19,7 +19,7 @@ const Account = sequelize.define('Account', {
         field: 'account_name'
     },
     shortName: {
-        type: DataTypes.STRING(20),
+        type: DataTypes.STRING(50),
         allowNull: true,
         field: 'short_name'
     },

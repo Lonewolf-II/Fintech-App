@@ -36,8 +36,12 @@ export const getAllCustomers = async (req, res) => {
         const customers = await Customer.findAll({
             include: [
                 { association: 'creator', attributes: ['name'] },
-                { association: 'verifier', attributes: ['name'] }
-            ],
+                { association: 'verifier', attributes: ['name'] },
+                {
+                    association: 'accounts',
+                    attributes: ['accountNumber', 'accountName', 'balance', 'isPrimary', 'accountType'] // Fetch necessary fields
+                }
+            ], // Include accounts
             order: [['created_at', 'DESC']]
         });
 

@@ -20,7 +20,7 @@ const Customer = sequelize.define('Customer', {
     },
     email: {
         type: DataTypes.STRING,
-        unique: true,
+        // unique: true, // Removed per requirement
         allowNull: false,
         validate: {
             isEmail: true
@@ -46,6 +46,16 @@ const Customer = sequelize.define('Customer', {
         type: DataTypes.ENUM('individual', 'corporate'),
         field: 'account_type'
     },
+    // Family Details
+    fatherName: { type: DataTypes.STRING, field: 'father_name' },
+    grandfatherName: { type: DataTypes.STRING, field: 'grandfather_name' },
+    motherName: { type: DataTypes.STRING, field: 'mother_name' },
+    spouseName: { type: DataTypes.STRING, field: 'spouse_name' },
+
+    // Demat Details
+    boid: { type: DataTypes.STRING },
+    dematOpenDate: { type: DataTypes.DATEONLY, field: 'demat_open_date' },
+    dematExpiryDate: { type: DataTypes.DATEONLY, field: 'demat_expiry_date' },
     createdBy: {
         type: DataTypes.INTEGER,
         field: 'created_by',

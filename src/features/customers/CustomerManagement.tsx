@@ -6,8 +6,11 @@ import { Modal } from '../../components/common/Modal';
 import { CustomerForm } from './components/CustomerForm';
 import { CustomerTable } from './components/CustomerTable';
 import { BulkUploadModal } from './components/BulkUploadModal';
+import { AccountStatementViewer } from '../../components/common/AccountStatementViewer';
 import { UserPlus, Search, Upload } from 'lucide-react';
 import type { Customer } from '../../types/business.types';
+import { bankingApi } from '../../api/bankingApi';
+import toast from 'react-hot-toast';
 
 export const CustomerManagement: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -18,13 +21,20 @@ export const CustomerManagement: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [kycFilter, setKycFilter] = useState<string>('all');
 
+    // Statement viewer state
+    const [showStatements, setShowStatements] = useState(false);
+    const [statementAccount, setStatementAccount] = useState<any>(null);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+
     useEffect(() => {
         dispatch(fetchCustomers());
     }, [dispatch]);
 
     const filteredCustomers = customers.filter((customer) => {
         const matchesSearch = customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+            customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            customer.accounts?.some(acc => acc.accountNumber.includes(searchTerm));
         const matchesKyc = kycFilter === 'all' || customer.kycStatus === kycFilter;
         return matchesSearch && matchesKyc;
     });
@@ -50,6 +60,29 @@ export const CustomerManagement: React.FC = () => {
         setSelectedCustomer(null);
     };
 
+    const handleViewStatements = async (customer: Customer) => {
+        const primaryAccount = customer.accounts?.find(acc => acc.isPrimary) || customer.accounts?.[0];
+
+        if (!primaryAccount) {
+            toast.error('No account found for this customer');
+            return;
+        }
+
+        setStatementAccount(primaryAccount);
+        setShowStatements(true);
+        setLoadingTransactions(true);
+
+        try {
+            const response = await bankingApi.getAccountTransactions(primaryAccount.id);
+            setTransactions(response || []);
+        } catch (error: any) {
+            toast.error('Failed to load transactions');
+            setTransactions([]);
+        } finally {
+            setLoadingTransactions(false);
+        }
+    };
+
     return (
         <div className="p-6">
             {/* Header */}
@@ -58,17 +91,19 @@ export const CustomerManagement: React.FC = () => {
                     <h1 className="text-2xl font-bold text-slate-900">Customer Management</h1>
                     <p className="text-slate-600">Manage customer accounts and KYC verification</p>
                 </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Bulk Upload
+                    </Button>
+                    <Button onClick={handleCreate}>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Add Customer
+                    </Button>
+                </div>
             </div>
-            <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Bulk Upload
-                </Button>
-                <Button onClick={handleCreate}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add Customer
-                </Button>
-            </div>
+
+            {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-4 rounded-lg shadow">
                     <p className="text-sm text-slate-600">Total Customers</p>
@@ -101,7 +136,7 @@ export const CustomerManagement: React.FC = () => {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                         <input
                             type="text"
-                            placeholder="Search by name or email..."
+                            placeholder="Search by name, email, or account number..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -131,6 +166,7 @@ export const CustomerManagement: React.FC = () => {
                         customers={filteredCustomers}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onViewStatements={handleViewStatements}
                     />
                 )}
             </div>
@@ -160,6 +196,27 @@ export const CustomerManagement: React.FC = () => {
             >
                 <BulkUploadModal onClose={() => setIsBulkModalOpen(false)} />
             </Modal>
-        </div >
+
+            {/* Account Statement Viewer */}
+            {showStatements && statementAccount && (
+                loadingTransactions ? (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-8 rounded-lg">
+                            <p className="text-slate-600">Loading transactions...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <AccountStatementViewer
+                        account={statementAccount}
+                        transactions={transactions}
+                        onClose={() => {
+                            setShowStatements(false);
+                            setStatementAccount(null);
+                            setTransactions([]);
+                        }}
+                    />
+                )
+            )}
+        </div>
     );
 };

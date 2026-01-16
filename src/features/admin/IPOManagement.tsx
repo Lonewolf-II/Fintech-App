@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ipoApi, type IPOListing, type IPOApplication } from '../../api/ipoApi';
-import { adminApi } from '../../api/adminApi';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
@@ -255,7 +254,7 @@ const IPOApplicationList: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this application? This will unblock any held funds.')) return;
 
         try {
-            await adminApi.deleteIPOApplication(id);
+            await ipoApi.deleteApplication(id);
             setApplications(prev => prev.filter(app => app.id !== id));
         } catch (error) {
             console.error('Failed to delete application', error);

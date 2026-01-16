@@ -5,6 +5,11 @@ import type { Account, Transaction } from '../../types/business.types';
 interface BankingState {
     accounts: Account[];
     transactions: Transaction[];
+    transactionPagination: {
+        total: number;
+        totalPages: number;
+        currentPage: number;
+    };
     selectedAccount: Account | null;
     isLoading: boolean;
     error: string | null;
@@ -13,6 +18,11 @@ interface BankingState {
 const initialState: BankingState = {
     accounts: [],
     transactions: [],
+    transactionPagination: {
+        total: 0,
+        totalPages: 0,
+        currentPage: 1
+    },
     selectedAccount: null,
     isLoading: false,
     error: null,
@@ -102,21 +112,29 @@ const bankingSlice = createSlice({
                 state.accounts.unshift(action.payload);
             })
             .addCase(fetchTransactions.fulfilled, (state, action) => {
-                state.transactions = action.payload;
+                const payload = action.payload as any;
+                // Handle both old (array) and new (paginated) response formats for backward compatibility
+                if (Array.isArray(payload)) {
+                    state.transactions = payload;
+                    state.transactionPagination = { total: payload.length, totalPages: 1, currentPage: 1 };
+                } else {
+                    state.transactions = payload.transactions;
+                    state.transactionPagination = {
+                        total: payload.total,
+                        totalPages: payload.totalPages,
+                        currentPage: payload.currentPage
+                    };
+                }
             })
             .addCase(createTransaction.fulfilled, (state, action) => {
+                // We might want to re-fetch to get latest state, but pushing for now is okay
+                // Ideally, we should invalidate cache or refetch
                 state.transactions.unshift(action.payload);
             })
             .addCase(updateAccount.fulfilled, (state, action) => {
                 const result = action.payload as any;
-                // If it's a modification request response (has pending: true)
-                if (result.pending) {
-                    // Maybe set a global notification/message state?
-                    // For now, we don't update the account in list because it's pending
-                    return;
-                }
+                if (result.pending) return;
 
-                // If it's a direct update
                 const updatedAccount = action.payload as Account;
                 const index = state.accounts.findIndex(a => a.id === updatedAccount.id);
                 if (index !== -1) {

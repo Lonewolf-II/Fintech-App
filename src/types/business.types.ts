@@ -12,6 +12,14 @@ export interface Customer {
     verifiedBy?: number;
     createdAt?: string;
     updatedAt?: string;
+    // Family & Demat Options
+    fatherName?: string;
+    grandfatherName?: string;
+    motherName?: string;
+    spouseName?: string;
+    boid?: string;
+    dematOpenDate?: string;
+    dematExpiryDate?: string;
     // Relations
     // Relations
     accounts?: Account[];
@@ -241,4 +249,30 @@ export interface BulkUploadResult {
         data: any;
         errors: string[];
     }>;
+}
+
+export interface Investment {
+    id: number;
+    investmentId: string;
+    investorId: number;
+    customerId: number;
+    accountId: number;
+    ipoApplicationId?: number;
+    principalAmount: number;
+    sharesAllocated: number;
+    costPerShare: number;
+    totalCost: number;
+    sharesHeld: number;
+    currentMarketPrice: number;
+    currentValue: number;
+    totalSoldAmount: number;
+    investorProfit: number;
+    customerProfit: number;
+    adminFee: number;
+    status: 'active' | 'partially_sold' | 'fully_realized';
+    investedAt: string;
+    createdAt: string;
+    updatedAt: string;
+    customer?: Customer;
+    account?: Account;
 }

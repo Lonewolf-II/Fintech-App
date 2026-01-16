@@ -58,7 +58,7 @@ router.post('/applications/:id/allot', requireRole('admin'), allotIPOApplication
 router.put('/applications/:id', requireRole('maker', 'admin'), updateIPOApplication);
 
 // Delete IPO Application (Admin only)
-router.delete('/applications/:id', requireRole('admin'), deleteIPOApplication);
+router.delete('/applications/:id', requireRole('maker', 'admin'), deleteIPOApplication);
 
 // -- Statistics Routes --
 

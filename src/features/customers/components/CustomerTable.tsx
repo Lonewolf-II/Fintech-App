@@ -2,15 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, FileText } from 'lucide-react';
 import type { Customer } from '../../../types/business.types';
-import { format } from 'date-fns';
 import { useAppSelector } from '../../../app/hooks';
+import { formatCurrency } from '../../../utils/formatters';
 
 interface CustomerTableProps {
     customers: Customer[];
     onEdit: (customer: Customer) => void;
     onDelete: (customer: Customer) => void;
+    onViewStatements?: (customer: Customer) => void;
 }
 
 const getKycBadgeVariant = (status: string) => {
@@ -26,7 +27,12 @@ const getKycBadgeVariant = (status: string) => {
     }
 };
 
-export const CustomerTable: React.FC<CustomerTableProps> = ({ customers, onEdit, onDelete }) => {
+export const CustomerTable: React.FC<CustomerTableProps> = ({
+    customers,
+    onEdit,
+    onDelete,
+    onViewStatements
+}) => {
     const { user } = useAppSelector((state) => state.auth);
     const basePath = user ? `/${user.role}` : '/admin';
 
@@ -59,13 +65,16 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ customers, onEdit,
                             Phone
                         </th>
                         <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">
+                            Account Number
+                        </th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">
+                            Account Name
+                        </th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">
+                            Balance
+                        </th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">
                             KYC Status
-                        </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">
-                            Type
-                        </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700">
-                            Created
                         </th>
                         <th className="text-right py-3 px-4 text-sm font-semibold text-slate-700">
                             Actions
@@ -73,56 +82,76 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({ customers, onEdit,
                     </tr>
                 </thead>
                 <tbody>
-                    {customers.map((customer) => (
-                        <tr
-                            key={customer.id}
-                            className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                        >
-                            <td className="py-3 px-4">
-                                <span className="font-mono text-sm text-slate-700">
-                                    {customer.customerId}
-                                </span>
-                            </td>
-                            <td className="py-3 px-4">
-                                <Link to={`${basePath}/customers/${customer.id}`} className="font-medium text-blue-600 hover:text-blue-800">
-                                    {customer.fullName}
-                                </Link>
-                            </td>
-                            <td className="py-3 px-4 text-slate-600">{customer.email}</td>
-                            <td className="py-3 px-4 text-slate-600">{customer.phone}</td>
-                            <td className="py-3 px-4">
-                                <Badge variant={getKycBadgeVariant(customer.kycStatus)}>
-                                    {customer.kycStatus}
-                                </Badge>
-                            </td>
-                            <td className="py-3 px-4 text-slate-600">
-                                {customer.accountType || '-'}
-                            </td>
-                            <td className="py-3 px-4 text-slate-600 text-sm">
-                                {customer.createdAt
-                                    ? format(new Date(customer.createdAt), 'MMM dd, yyyy')
-                                    : '-'}
-                            </td>
-                            <td className="py-3 px-4">
-                                <div className="flex items-center justify-end space-x-2">
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => onEdit(customer)}
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => onDelete(customer)}
-                                    >
-                                        <Trash2 className="w-4 h-4 text-red-600" />
-                                    </Button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
+                    {customers.map((customer) => {
+                        // Get primary account if available
+                        const primaryAccount = customer.accounts?.find(acc => acc.isPrimary) || customer.accounts?.[0];
+
+                        return (
+                            <tr
+                                key={customer.id}
+                                className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                            >
+                                <td className="py-3 px-4">
+                                    <span className="font-mono text-sm text-slate-700">
+                                        {customer.customerId}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                    <Link to={`${basePath}/customers/${customer.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+                                        {customer.fullName}
+                                    </Link>
+                                </td>
+                                <td className="py-3 px-4 text-slate-600">{customer.email}</td>
+                                <td className="py-3 px-4 text-slate-600">{customer.phone}</td>
+                                <td className="py-3 px-4">
+                                    <span className="font-mono text-sm text-slate-700">
+                                        {primaryAccount?.accountNumber || '-'}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-4 text-slate-600 text-sm">
+                                    {primaryAccount?.accountName || '-'}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                    <span className="font-semibold text-green-600">
+                                        {primaryAccount ? formatCurrency(primaryAccount.balance) : '-'}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                    <Badge variant={getKycBadgeVariant(customer.kycStatus)}>
+                                        {customer.kycStatus}
+                                    </Badge>
+                                </td>
+                                <td className="py-3 px-4">
+                                    <div className="flex items-center justify-end space-x-2">
+                                        {onViewStatements && primaryAccount && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => onViewStatements(customer)}
+                                                title="View Statements"
+                                            >
+                                                <FileText className="w-4 h-4 text-blue-600" />
+                                            </Button>
+                                        )}
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => onEdit(customer)}
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => onDelete(customer)}
+                                        >
+                                            <Trash2 className="w-4 h-4 text-red-600" />
+                                        </Button>
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

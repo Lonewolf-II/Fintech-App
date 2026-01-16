@@ -55,16 +55,16 @@ export const calculateProfitDistribution = async (req, res) => {
         // Create profit distribution record
         const distribution = await ProfitDistribution.create({
             investmentId,
-            saleQuantity,
-            salePrice,
-            saleAmount,
+            sharesSold: saleQuantity,
+            salePricePerShare: salePrice,
+            totalSaleAmount: saleAmount,
             principalReturned: principalAmount,
             totalProfit,
             investorShare,
-            adminShare,
-            feesDeducted,
+            // adminShare is ignored as it's not in the model
+            adminFee: feesDeducted,
             customerShare,
-            distributionDate: saleDate || new Date(),
+            distributedAt: saleDate || new Date(),
             createdBy: req.user.id
         }, { transaction });
 
@@ -240,7 +240,7 @@ export const getDistributionStats = async (req, res) => {
         const totalProfitDistributed = await ProfitDistribution.sum('totalProfit') || 0;
         const totalInvestorShare = await ProfitDistribution.sum('investorShare') || 0;
         const totalCustomerShare = await ProfitDistribution.sum('customerShare') || 0;
-        const totalFeesCollected = await ProfitDistribution.sum('feesDeducted') || 0;
+        const totalFeesCollected = await ProfitDistribution.sum('adminFee') || 0;
 
         res.json({
             totalDistributions,

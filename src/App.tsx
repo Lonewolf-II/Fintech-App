@@ -14,6 +14,7 @@ import { BulkIPO } from './features/maker/BulkIPO';
 import { CustomerManagement } from './features/customers/CustomerManagement';
 import { CustomerProfile } from './features/customers/CustomerProfile';
 import { BankingDashboard } from './features/banking/BankingDashboard';
+import { AccountStatementPage } from './features/banking/AccountStatementPage';
 import { TransactionOperations } from './features/banking/TransactionOperations';
 import { PortfolioDashboard } from './features/portfolio/PortfolioDashboard';
 import { MakerDashboard } from './features/maker/MakerDashboard';
@@ -65,6 +66,7 @@ function AppRoutes() {
                 <Route path="customers" element={<CustomerManagement />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="banking" element={<BankingDashboard />} />
+                <Route path="banking/statement/:accountId" element={<AccountStatementPage />} />
                 <Route path="portfolio" element={<PortfolioDashboard />} />
                 <Route path="ipo-applications" element={<div>IPO Applications List (Coming Soon)</div>} />
                 <Route path="ipo" element={<IPOManagement />} />
@@ -89,6 +91,7 @@ function AppRoutes() {
                 <Route path="customers" element={<CustomerManagement />} />
                 <Route path="customers/:id" element={<CustomerProfile />} />
                 <Route path="banking" element={<BankingDashboard />} />
+                <Route path="banking/statement/:accountId" element={<AccountStatementPage />} />
                 <Route path="transactions" element={<TransactionOperations />} />
                 <Route path="portfolio" element={<PortfolioDashboard />} />
                 <Route path="ipo-applications" element={<div>IPO Applications List (Coming Soon)</div>} />

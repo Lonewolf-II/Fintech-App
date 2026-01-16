@@ -1,50 +1,72 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { fetchAccounts, fetchTransactions } from './bankingSlice';
-import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { fetchAccounts } from './bankingSlice';
+import { formatCurrency } from '../../utils/formatters';
 import { Button } from '../../components/common/Button';
-import { TransactionModal } from './components/TransactionModal';
 import { EditAccountModal } from './components/EditAccountModal';
-import { DollarSign, TrendingUp, TrendingDown, Plus, Filter, Calendar, Edit2, Eye } from 'lucide-react';
+import { DepositWithdrawModal } from './components/DepositWithdrawModal';
+import { DollarSign, TrendingUp, TrendingDown, Edit2, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Account } from '../../types/business.types';
+import { useNavigate } from 'react-router-dom';
 
 export const BankingDashboard: React.FC = () => {
     const dispatch = useAppDispatch();
-    const { accounts, transactions, isLoading } = useAppSelector((state) => state.banking);
-    const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+    const navigate = useNavigate();
+    const { user } = useAppSelector((state) => state.auth);
+    const { accounts, isLoading } = useAppSelector((state) => state.banking);
     const [accountToEdit, setAccountToEdit] = useState<Account | null>(null);
-    const [showTransactionModal, setShowTransactionModal] = useState(false);
-
-    // Filter states
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [filterType, setFilterType] = useState<string>('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 15;
 
     useEffect(() => {
         dispatch(fetchAccounts());
     }, [dispatch]);
 
-    useEffect(() => {
-        if (selectedAccount) {
-            dispatch(fetchTransactions({
-                accountId: selectedAccount.id,
-                params: {
-                    startDate: startDate || undefined,
-                    endDate: endDate || undefined,
-                    type: filterType !== 'all' ? filterType : undefined
-                }
-            }));
-        }
-    }, [selectedAccount, startDate, endDate, filterType, dispatch]);
-
     const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance.toString()), 0);
+
+    // Filter and Pagination
+    const filteredAccounts = accounts.filter(acc =>
+        acc.accountNumber?.includes(searchTerm) ||
+        acc.accountName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
+    const paginatedAccounts = filteredAccounts.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
+
+    const [depositWithdrawModal, setDepositWithdrawModal] = useState<{
+        isOpen: boolean;
+        account: Account | null;
+        type: 'deposit' | 'withdrawal';
+    }>({
+        isOpen: false,
+        account: null,
+        type: 'deposit'
+    });
+
+    const openDepositWithdraw = (account: Account, type: 'deposit' | 'withdrawal') => {
+        setDepositWithdrawModal({
+            isOpen: true,
+            account,
+            type
+        });
+    };
 
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Banking Dashboard</h1>
-                    <p className="text-slate-600">Manage accounts, view statements and transactions</p>
+                    <p className="text-slate-600">Manage accounts and view statements</p>
                 </div>
             </div>
 
@@ -67,7 +89,7 @@ export const BankingDashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-slate-600">Active Accounts</p>
-                            <p className="text-2xl font-bold text-slate-900 mt-1">{accounts.length}</p>
+                            <p className="text-2xl font-bold text-slate-900 mt-1">{accounts.filter(a => a.status === 'active').length}</p>
                         </div>
                         <div className="bg-blue-100 p-3 rounded-full">
                             <TrendingUp className="w-6 h-6 text-blue-600" />
@@ -77,9 +99,9 @@ export const BankingDashboard: React.FC = () => {
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-slate-600">Selected Account Balance</p>
+                            <p className="text-sm font-medium text-slate-600">Total Accounts</p>
                             <p className="text-2xl font-bold text-slate-900 mt-1">
-                                {selectedAccount ? formatCurrency(selectedAccount.balance) : '-'}
+                                {accounts.length}
                             </p>
                         </div>
                         <div className="bg-purple-100 p-3 rounded-full">
@@ -89,216 +111,158 @@ export const BankingDashboard: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Accounts List */}
-                <div className="bg-white rounded-lg shadow-sm border border-slate-200 h-fit">
-                    <div className="p-4 border-b border-slate-200">
-                        <h2 className="text-lg font-semibold text-slate-900">Accounts</h2>
+            {/* Accounts Table */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+                <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h2 className="text-lg font-semibold text-slate-900">Bank Accounts</h2>
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search accounts..."
+                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-md focus:ring-1 focus:ring-primary-500"
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1); // Reset to first page on search
+                            }}
+                        />
                     </div>
-                    <div className="p-4">
-                        {isLoading && !accounts.length ? (
-                            <div className="text-center py-8 text-slate-500">Loading accounts...</div>
-                        ) : accounts.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500">No accounts found</div>
-                        ) : (
-                            <div className="space-y-3">
-                                {accounts.map((account) => (
-                                    <div
-                                        key={account.id}
-                                        className={`p-4 border rounded-lg transition-colors ${selectedAccount?.id === account.id
-                                            ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
-                                            : 'hover:bg-slate-50 border-slate-200'
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="font-mono text-sm font-medium text-slate-600">
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Number</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Name</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-slate-200">
+                            {isLoading && accounts.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">Loading accounts...</td>
+                                </tr>
+                            ) : paginatedAccounts.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No accounts found</td>
+                                </tr>
+                            ) : (
+                                paginatedAccounts.map((account) => (
+                                    <tr key={account.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="font-mono text-sm font-medium text-slate-900">
                                                 {account.accountNumber}
                                             </span>
-                                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${account.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">
+                                            {account.accountType.replace('_', ' ')}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                                            {account.accountName || 'Unnamed'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-slate-900">
+                                            {formatCurrency(parseFloat(account.balance.toString()))}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${account.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                account.status === 'frozen' ? 'bg-orange-100 text-orange-800' :
+                                                    'bg-red-100 text-red-800'
                                                 }`}>
                                                 {account.status}
                                             </span>
-                                        </div>
-                                        <div className="mb-1">
-                                            <p className="font-bold text-slate-900 text-lg">
-                                                {formatCurrency(parseFloat(account.balance.toString()))}
-                                            </p>
-                                        </div>
-                                        <div className="text-xs text-slate-500 capitalize mb-3">
-                                            {account.accountType.replace('_', ' ')} • {account.accountName || 'Unnamed'}
-                                        </div>
-
-                                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/50">
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-8 px-2 text-slate-500 hover:text-primary-600"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setAccountToEdit(account);
-                                                }}
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className={`h-8 px-2 ${selectedAccount?.id === account.id ? 'text-blue-600 bg-blue-100' : 'text-slate-500 hover:text-blue-600'}`}
-                                                onClick={() => setSelectedAccount(account)}
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                    onClick={() => openDepositWithdraw(account, 'deposit')}
+                                                    title="Deposit"
+                                                >
+                                                    <TrendingUp className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={() => openDepositWithdraw(account, 'withdrawal')}
+                                                    title="Withdraw"
+                                                >
+                                                    <TrendingDown className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => navigate(`/${user?.role}/banking/statement/${account.id}`)}
+                                                    title="View Statement"
+                                                >
+                                                    <FileText className="w-4 h-4 text-blue-600" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setAccountToEdit(account)}
+                                                    title="Edit Account"
+                                                >
+                                                    <Edit2 className="w-4 h-4 text-slate-500" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
-                {/* Bank Statement View */}
-                <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-slate-200">
-                    {selectedAccount ? (
-                        <>
-                            <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div>
-                                    <h2 className="text-lg font-semibold text-slate-900">Bank Statement</h2>
-                                    <p className="text-sm text-slate-500">
-                                        {selectedAccount.accountName} - {selectedAccount.accountNumber}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => setShowTransactionModal(true)}>
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        New Transaction
-                                    </Button>
-                                    <Button size="sm" variant="secondary" onClick={() => {
-                                        // Simple print/export simulation
-                                        window.print();
-                                    }}>
-                                        Export
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Filters */}
-                            <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Start Date</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-2 w-4 h-4 text-slate-400" />
-                                        <input
-                                            type="date"
-                                            className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md focus:ring-1 focus:ring-primary-500"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">End Date</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-2 w-4 h-4 text-slate-400" />
-                                        <input
-                                            type="date"
-                                            className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md focus:ring-1 focus:ring-primary-500"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                                    <div className="relative">
-                                        <Filter className="absolute left-3 top-2 w-4 h-4 text-slate-400" />
-                                        <select
-                                            className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md focus:ring-1 focus:ring-primary-500"
-                                            value={filterType}
-                                            onChange={(e) => setFilterType(e.target.value)}
-                                        >
-                                            <option value="all">All Transactions</option>
-                                            <option value="deposit">Deposits Only</option>
-                                            <option value="withdrawal">Withdrawals Only</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Transactions Table */}
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Description</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Debit (Dr)</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Credit (Cr)</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-200">
-                                        {transactions.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                                    No transactions found for the selected period
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            transactions.map((txn) => {
-                                                const amount = parseFloat(txn.amount.toString());
-                                                const isCredit = txn.transactionType === 'deposit';
-
-                                                return (
-                                                    <tr key={txn.id} className="hover:bg-slate-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                                            {formatDateTime((txn.createdAt || new Date().toISOString()).toString())}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                                            {txn.description || txn.transactionType}
-                                                            <div className="text-xs text-slate-400 font-normal">{txn.transactionId}</div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-medium">
-                                                            {!isCredit ? formatCurrency(amount) : '-'}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
-                                                            {isCredit ? formatCurrency(amount) : '-'}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-slate-900">
-                                                            {formatCurrency(parseFloat(txn.balanceAfter.toString()))}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center p-12 text-slate-500">
-                            <div className="bg-slate-100 p-4 rounded-full mb-4">
-                                <DollarSign className="w-8 h-8 text-slate-400" />
-                            </div>
-                            <h3 className="text-lg font-medium text-slate-900">No Account Selected</h3>
-                            <p className="mt-1">Select an account from the list to view its statement.</p>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+                        <div className="text-sm text-slate-500">
+                            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredAccounts.length)}</span> of <span className="font-medium">{filteredAccounts.length}</span> results
                         </div>
-                    )}
-                </div>
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === 1}
+                                onClick={() => handlePageChange(currentPage - 1)}
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={currentPage === totalPages}
+                                onClick={() => handlePageChange(currentPage + 1)}
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
-
-            {selectedAccount && (
-                <TransactionModal
-                    isOpen={showTransactionModal}
-                    onClose={() => setShowTransactionModal(false)}
-                    account={selectedAccount}
-                />
-            )}
 
             {accountToEdit && (
                 <EditAccountModal
                     isOpen={!!accountToEdit}
                     onClose={() => setAccountToEdit(null)}
                     account={accountToEdit}
+                />
+            )}
+
+            {depositWithdrawModal.isOpen && depositWithdrawModal.account && (
+                <DepositWithdrawModal
+                    isOpen={depositWithdrawModal.isOpen}
+                    onClose={() => setDepositWithdrawModal({ ...depositWithdrawModal, isOpen: false })}
+                    account={depositWithdrawModal.account}
+                    type={depositWithdrawModal.type}
                 />
             )}
         </div>

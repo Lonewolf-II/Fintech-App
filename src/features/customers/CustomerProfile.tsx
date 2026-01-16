@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchCustomer, updateIPOApplication, deleteIPOApplication } from './customerSlice';
 import { IPOApplicationForm } from './components/IPOApplicationForm';
+import { CustomerForm } from './components/CustomerForm';
+import { DematFamilyForm } from './components/DematFamilyForm';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { User, Shield, Plus, Key, Lock, Edit, Trash2 } from 'lucide-react';
 import { AddBankAccountModal } from './components/AddBankAccountModal';
@@ -24,9 +26,11 @@ export const CustomerProfile: React.FC = () => {
     const { user } = useAppSelector((state) => state.auth);
     const { selectedCustomer, isLoading, error } = useAppSelector((state) => state.customers);
     const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'portfolio' | 'credentials'>('overview');
+    const [portfolioSubTab, setPortfolioSubTab] = useState<'holdings' | 'apply' | 'applications' | 'details'>('holdings');
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCredentialModalOpen, setIsAddCredentialModalOpen] = useState(false);
     const [isEditAccountModalOpen, setIsEditAccountModalOpen] = useState(false);
+    const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
     useEffect(() => {
@@ -43,6 +47,12 @@ export const CustomerProfile: React.FC = () => {
     const accounts = selectedCustomer.accounts || [];
     const ipoApplications = selectedCustomer.ipoApplications || [];
     const credentials = selectedCustomer.credentials || [];
+
+    const handleEditSuccess = () => {
+        setIsEditProfileModalOpen(false);
+        dispatch(fetchCustomer(id!));
+        toast.success('Profile updated successfully');
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -117,6 +127,7 @@ export const CustomerProfile: React.FC = () => {
                 >
                     Overview
                 </button>
+
                 <button
                     onClick={() => setActiveTab('accounts')}
                     className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === 'accounts' ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -144,7 +155,13 @@ export const CustomerProfile: React.FC = () => {
             <div className="space-y-6">
                 {activeTab === 'overview' && (
                     <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-4">Personal Details</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Personal Details</h3>
+                            <Button size="sm" variant="outline" onClick={() => setIsEditProfileModalOpen(true)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Details
+                            </Button>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="text-sm text-slate-500">Email</label>
@@ -176,6 +193,8 @@ export const CustomerProfile: React.FC = () => {
                     </div>
                 )}
 
+
+
                 {activeTab === 'accounts' && (
                     <div className="bg-white rounded-lg shadow overflow-hidden">
                         <div className="p-4 flex justify-end">
@@ -188,9 +207,10 @@ export const CustomerProfile: React.FC = () => {
                             <thead className="bg-slate-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Number</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Bank Name</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Blocked Amount</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Blocked</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Primary</th>
                                 </tr>
@@ -203,6 +223,7 @@ export const CustomerProfile: React.FC = () => {
                                         onClick={() => setSelectedAccount(acc)}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{acc.accountNumber}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{acc.bankName || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{acc.accountType.replace('_', ' ')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-bold">{formatCurrency(acc.balance)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">{formatCurrency(acc.blockedAmount || 0)}</td>
@@ -219,7 +240,7 @@ export const CustomerProfile: React.FC = () => {
                                 ))}
                                 {accounts.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-4 text-center text-slate-500">No accounts found</td>
+                                        <td colSpan={7} className="px-6 py-4 text-center text-slate-500">No accounts found</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -229,67 +250,100 @@ export const CustomerProfile: React.FC = () => {
 
                 {activeTab === 'portfolio' && (
                     <div className="space-y-6">
-                        {/* Portfolio Holdings Section */}
-                        <div className="bg-white rounded-lg shadow overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-slate-900">Portfolio Holdings</h3>
-                                <Button size="sm" onClick={() => {
-                                    // For now, just a placeholder or could open a simplified add modal
-                                    toast.success("Feature coming soon");
-                                }}>
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Add Holding
-                                </Button>
+                        {/* Child Tabs for Portfolio & IPO */}
+                        <div className="bg-white rounded-lg shadow">
+                            <div className="flex border-b border-slate-200 overflow-x-auto px-4">
+                                <button
+                                    onClick={() => setPortfolioSubTab('holdings')}
+                                    className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${portfolioSubTab === 'holdings'
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Portfolio Holdings
+                                </button>
+                                <button
+                                    onClick={() => setPortfolioSubTab('apply')}
+                                    className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${portfolioSubTab === 'apply'
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Apply for IPO
+                                </button>
+                                <button
+                                    onClick={() => setPortfolioSubTab('applications')}
+                                    className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${portfolioSubTab === 'applications'
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    IPO Applications
+                                </button>
+                                <button
+                                    onClick={() => setPortfolioSubTab('details')}
+                                    className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${portfolioSubTab === 'details'
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    My Details
+                                </button>
                             </div>
 
-                            {/* Holdings Table */}
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Symbol</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qty</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Avg Price</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Current</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Value</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">P/L</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-200">
-                                        {/* We need to fetch holdings. Since we don't have them in selectedCustomer, 
-                                                we ideally should have fetched them. 
-                                                For this implementation, let's assume we dispatch fetchHoldings if we have a portfolio ID 
-                                             */}
-                                        {/* Note: Ideally we fetch this on tab change or if selectedCustomer has portfolioId used to find holdings. 
-                                                If we don't have state.portfolio.holdings here, we need to map it. 
-                                                Let's assume for now we use a specialized component or just render if we had them.
-                                                
-                                                Wait, I need to connect to state.portfolio.holdings
-                                            */}
-                                        <PortfolioHoldingsTable
-                                            customerId={selectedCustomer.id}
-                                            pendingRequests={selectedCustomer.pendingRequests || []}
-                                        />
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-1">
-                                <IPOApplicationForm
-                                    customerId={selectedCustomer.id}
-                                    accounts={accounts}
-                                    onSuccess={() => dispatch(fetchCustomer(selectedCustomer.id))}
-                                />
-                            </div>
-                            <div className="lg:col-span-2">
-                                <div className="bg-white rounded-lg shadow overflow-hidden">
-                                    <div className="px-6 py-4 border-b border-slate-200">
-                                        <h3 className="text-lg font-semibold text-slate-900">IPO Applications</h3>
+                            {/* Portfolio Holdings Tab */}
+                            {portfolioSubTab === 'holdings' && (
+                                <div className="p-6">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg font-semibold text-slate-900">Portfolio Holdings</h3>
+                                        <Button size="sm" onClick={() => {
+                                            toast.success("Feature coming soon");
+                                        }}>
+                                            <Plus className="w-4 h-4 mr-2" />
+                                            Add Holding
+                                        </Button>
                                     </div>
+
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-slate-200">
+                                            <thead className="bg-slate-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Symbol</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qty</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Avg Price</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Current</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Value</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">P/L</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-slate-200">
+                                                <PortfolioHoldingsTable
+                                                    customerId={selectedCustomer.id}
+                                                    pendingRequests={selectedCustomer.pendingRequests || []}
+                                                />
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Apply for IPO Tab */}
+                            {portfolioSubTab === 'apply' && (
+                                <div className="p-6">
+                                    <IPOApplicationForm
+                                        customerId={selectedCustomer.id}
+                                        accounts={accounts}
+                                        onSuccess={() => dispatch(fetchCustomer(selectedCustomer.id))}
+                                    />
+                                </div>
+                            )}
+
+                            {/* IPO Applications Tab */}
+                            {portfolioSubTab === 'applications' && (
+                                <div className="p-6">
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-4">IPO Applications</h3>
                                     <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-slate-200">
                                             <thead className="bg-slate-50">
@@ -305,7 +359,7 @@ export const CustomerProfile: React.FC = () => {
                                             <tbody className="bg-white divide-y divide-slate-200">
                                                 {ipoApplications.map((app) => {
                                                     const pendingRequest = selectedCustomer.pendingRequests?.find(
-                                                        r => r.targetModel === 'IPOApplication' && r.targetId === app.id && r.status === 'pending'
+                                                        r => r.targetModel === 'IPOApplication' && r.targetId === String(app.id) && r.status === 'pending'
                                                     );
                                                     const isPending = !!pendingRequest;
 
@@ -341,7 +395,7 @@ export const CustomerProfile: React.FC = () => {
                                                                             const newQty = prompt("Enter new quantity:", String(app.quantity));
                                                                             if (newQty && !isNaN(Number(newQty))) {
                                                                                 dispatch(updateIPOApplication({
-                                                                                    id: app.id,
+                                                                                    id: String(app.id),
                                                                                     data: { quantity: Number(newQty), totalAmount: Number(newQty) * Number(app.pricePerShare) }
                                                                                 }))
                                                                                     .unwrap()
@@ -361,7 +415,7 @@ export const CustomerProfile: React.FC = () => {
                                                                         disabled={isPending}
                                                                         onClick={() => {
                                                                             if (confirm("Are you sure you want to delete this application?")) {
-                                                                                dispatch(deleteIPOApplication(app.id))
+                                                                                dispatch(deleteIPOApplication(String(app.id)))
                                                                                     .unwrap()
                                                                                     .then((res) => {
                                                                                         if (res.pending) toast.success("Deletion Request Sent");
@@ -389,7 +443,12 @@ export const CustomerProfile: React.FC = () => {
                                         </table>
                                     </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* My Details Tab (Existing Demat & Family Details) */}
+                            {portfolioSubTab === 'details' && (
+                                <DematFamilyForm customer={selectedCustomer} />
+                            )}
                         </div>
                     </div>
                 )}
@@ -462,6 +521,22 @@ export const CustomerProfile: React.FC = () => {
                 />
             )}
 
+            {/* Edit Profile Modal */}
+            {selectedCustomer && (
+                <Modal
+                    isOpen={isEditProfileModalOpen}
+                    onClose={() => setIsEditProfileModalOpen(false)}
+                    title="Edit Customer Profile"
+                    size="lg"
+                >
+                    <CustomerForm
+                        customer={selectedCustomer}
+                        onSuccess={handleEditSuccess}
+                        onCancel={() => setIsEditProfileModalOpen(false)}
+                    />
+                </Modal>
+            )}
+
             {/* Account Details Modal */}
             {selectedAccount && (
                 <Modal
@@ -482,7 +557,7 @@ export const CustomerProfile: React.FC = () => {
                             </div>
                             <div>
                                 <label className="text-sm text-slate-500">Bank Name</label>
-                                <p className="font-medium text-slate-900">{selectedAccount.accountName || '-'}</p>
+                                <p className="font-medium text-slate-900">{selectedAccount.bankName || '-'}</p>
                             </div>
                             <div>
                                 <label className="text-sm text-slate-500">Branch</label>
