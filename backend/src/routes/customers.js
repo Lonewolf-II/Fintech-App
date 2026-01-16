@@ -6,11 +6,14 @@ import {
     createCustomer,
     updateCustomer,
     deleteCustomer,
-    bulkCreateCustomers,
     addCredential,
     updateCredential,
     deleteCredential
 } from '../controllers/customerController.js';
+import {
+    bulkUploadCustomers,
+    downloadBulkUploadTemplate
+} from '../controllers/bulkUploadController.js';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -22,6 +25,9 @@ router.use(authMiddleware);
 // Get all customers
 router.get('/', requireRole('admin', 'maker', 'checker'), getAllCustomers);
 
+// Download bulk upload template
+router.get('/bulk-upload/template', requireRole('admin', 'maker'), downloadBulkUploadTemplate);
+
 // Get customer by ID
 router.get('/:id', requireRole('admin', 'maker', 'checker'), getCustomerById);
 
@@ -29,7 +35,7 @@ router.get('/:id', requireRole('admin', 'maker', 'checker'), getCustomerById);
 router.post('/', requireRole('admin', 'maker'), createCustomer);
 
 // Bulk upload customers (maker/admin)
-router.post('/bulk-upload', requireRole('admin', 'maker'), upload.single('file'), bulkCreateCustomers);
+router.post('/bulk-upload', requireRole('admin', 'maker'), upload.single('file'), bulkUploadCustomers);
 
 // Update customer
 router.put('/:id', requireRole('admin', 'maker', 'checker'), updateCustomer);

@@ -86,4 +86,19 @@ export const ipoApi = {
         const response = await apiClient.post('/ipo/bulk', { ipoListingId, applications });
         return response.data;
     },
+
+    // Allotment
+    allotApplication: async (id: number, data: {
+        allotmentQuantity: number;
+        allotmentStatus: 'allotted' | 'not_allotted';
+    }): Promise<IPOApplication> => {
+        const response = await apiClient.post(`/ipo/applications/${id}/allot`, data);
+        return response.data;
+    },
+
+    // Statistics
+    getStats: async (): Promise<any> => {
+        const response = await apiClient.get('/ipo/stats');
+        return response.data;
+    },
 };

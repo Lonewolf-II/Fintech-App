@@ -15,6 +15,9 @@ import InvestorCategory from './InvestorCategory.js';
 import CategoryAccountAssignment from './CategoryAccountAssignment.js';
 import Investment from './Investment.js';
 import ProfitDistribution from './ProfitDistribution.js';
+import Fee from './Fee.js';
+import SpecialAccount from './SpecialAccount.js';
+import InvestorAccountAssignment from './InvestorAccountAssignment.js';
 
 // User - Customer associations
 User.hasMany(Customer, { foreignKey: 'createdBy', as: 'createdCustomers' });
@@ -86,6 +89,44 @@ ProfitDistribution.belongsTo(Investment, { foreignKey: 'investmentId', as: 'inve
 User.hasMany(ProfitDistribution, { foreignKey: 'createdBy', as: 'createdDistributions' });
 ProfitDistribution.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 
+// Fee associations
+Customer.hasMany(Fee, { foreignKey: 'customerId', as: 'fees' });
+Fee.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+Account.hasMany(Fee, { foreignKey: 'accountId', as: 'fees' });
+Fee.belongsTo(Account, { foreignKey: 'accountId', as: 'account' });
+ProfitDistribution.hasMany(Fee, { foreignKey: 'distributionId', as: 'fees' });
+Fee.belongsTo(ProfitDistribution, { foreignKey: 'distributionId', as: 'distribution' });
+
+// SpecialAccount associations
+Investor.hasOne(SpecialAccount, { foreignKey: 'investorId', as: 'specialAccount' });
+SpecialAccount.belongsTo(Investor, { foreignKey: 'investorId', as: 'investor' });
+User.hasMany(SpecialAccount, { foreignKey: 'createdBy', as: 'createdSpecialAccounts' });
+SpecialAccount.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+// InvestorAccountAssignment associations
+Investor.hasMany(InvestorAccountAssignment, { foreignKey: 'investorId', as: 'accountAssignments' });
+InvestorAccountAssignment.belongsTo(Investor, { foreignKey: 'investorId', as: 'investor' });
+Account.hasMany(InvestorAccountAssignment, { foreignKey: 'accountId', as: 'investorAssignments' });
+InvestorAccountAssignment.belongsTo(Account, { foreignKey: 'accountId', as: 'account' });
+Customer.hasMany(InvestorAccountAssignment, { foreignKey: 'customerId', as: 'investorAssignments' });
+InvestorAccountAssignment.belongsTo(Customer, { foreignKey: 'customerId', as: 'customer' });
+User.hasMany(InvestorAccountAssignment, { foreignKey: 'assignedBy', as: 'assignedInvestorAccounts' });
+InvestorAccountAssignment.belongsTo(User, { foreignKey: 'assignedBy', as: 'assigner' });
+
+// IPOListing - IPOApplication associations
+IPOListing.hasMany(IPOApplication, { foreignKey: 'ipoListingId', as: 'applications' });
+IPOApplication.belongsTo(IPOListing, { foreignKey: 'ipoListingId', as: 'listing' });
+
+// User - IPOApplication associations
+User.hasMany(IPOApplication, { foreignKey: 'appliedBy', as: 'appliedApplications' });
+IPOApplication.belongsTo(User, { foreignKey: 'appliedBy', as: 'applier' });
+User.hasMany(IPOApplication, { foreignKey: 'verifiedBy', as: 'verifiedApplications' });
+IPOApplication.belongsTo(User, { foreignKey: 'verifiedBy', as: 'verifier' });
+
+// Investment - Holding associations
+Investment.hasMany(Holding, { foreignKey: 'investmentId', as: 'holdings' });
+Holding.belongsTo(Investment, { foreignKey: 'investmentId', as: 'investment' });
+
 export {
     sequelize,
     User,
@@ -103,5 +144,8 @@ export {
     InvestorCategory,
     CategoryAccountAssignment,
     Investment,
-    ProfitDistribution
+    ProfitDistribution,
+    Fee,
+    SpecialAccount,
+    InvestorAccountAssignment
 };

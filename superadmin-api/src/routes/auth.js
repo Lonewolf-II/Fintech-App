@@ -60,7 +60,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', authenticateSuperadmin, async (req, res) => {
     try {
         const superadmin = await Superadmin.findByPk(req.superadmin.id, {
-            attributes: ['id', 'email', 'name', 'role', 'createdAt', 'lastLoginAt']
+            attributes: ['id', 'email', 'name', 'role', 'created_at', 'last_login_at']
         });
         res.json(superadmin);
     } catch (error) {

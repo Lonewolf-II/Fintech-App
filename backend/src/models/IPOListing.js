@@ -32,6 +32,26 @@ const IPOListing = sequelize.define('IPOListing', {
         allowNull: false,
         field: 'close_date'
     },
+    openTime: {
+        type: DataTypes.TIME,
+        allowNull: true,
+        field: 'open_time'
+    },
+    closeTime: {
+        type: DataTypes.TIME,
+        allowNull: true,
+        field: 'close_time'
+    },
+    allotmentDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        field: 'allotment_date'
+    },
+    allotmentTime: {
+        type: DataTypes.TIME,
+        allowNull: true,
+        field: 'allotment_time'
+    },
     status: {
         type: DataTypes.ENUM('upcoming', 'open', 'closed', 'allotted'),
         defaultValue: 'upcoming',

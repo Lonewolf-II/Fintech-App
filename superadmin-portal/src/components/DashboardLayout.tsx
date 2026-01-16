@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/useRedux';
 import { logout } from '../store/authSlice';
-import { Building2, CreditCard, FileText, LogOut, Shield } from 'lucide-react';
+import { Building2, CreditCard, FileText, LogOut, Shield, LayoutDashboard } from 'lucide-react';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -14,7 +14,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const { superadmin } = useAppSelector((state) => state.auth);
 
     const navigation = [
+        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Tenants', path: '/tenants', icon: Building2 },
+        { name: 'Inactive Tenants', path: '/tenants/inactive', icon: Building2 },
         { name: 'Payments', path: '/payments', icon: CreditCard },
         { name: 'Audit Logs', path: '/audit', icon: FileText }
     ];
@@ -48,8 +50,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                                 key={item.path}
                                 to={item.path}
                                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                        ? 'bg-primary-50 text-primary-700 font-medium'
-                                        : 'text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-primary-50 text-primary-700 font-medium'
+                                    : 'text-gray-700 hover:bg-gray-100'
                                     }`}
                             >
                                 <Icon className="w-5 h-5" />

@@ -51,7 +51,7 @@ A comprehensive financial technology application built with React, TypeScript, R
 4. **Open your browser**
    Navigate to `http://localhost:5173`
    Main App: `http://localhost:5173` (Distinct login page)
-   Superadmin Portal: `http://localhost:5174` (Distinct login page)
+   Superadmin Portal: `http://localhost:5175` (Distinct login page)
 ### Available Scripts
 
 - `npm run dev` - Start development server

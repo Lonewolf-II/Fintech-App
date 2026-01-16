@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { tenantsApi } from '../api/apiClient';
-import { Plus, Search, Power, PowerOff, Building2 } from 'lucide-react';
+import { Plus, Search, Power, PowerOff, Building2, Eye, Trash2 } from 'lucide-react';
+import CreateTenantModal from '../components/tenants/CreateTenantModal';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '../hooks/useRedux';
+import { deleteTenant } from '../store/tenantsSlice';
 
 const TenantsPage: React.FC = () => {
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
     const [tenants, setTenants] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     useEffect(() => {
         loadTenants();
@@ -40,6 +47,16 @@ const TenantsPage: React.FC = () => {
             loadTenants();
         } catch (error) {
             alert('Failed to activate tenant');
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Are you sure you want to PERMANENTLY delete this tenant? This action cannot be undone and will delete the tenant database.')) return;
+        try {
+            await dispatch(deleteTenant(id)).unwrap();
+            loadTenants(); // or optimize by filtering local state, but loadTenants syncs with backend
+        } catch (error: any) {
+            alert('Failed to delete tenant: ' + (error.message || 'Unknown error'));
         }
     };
 
@@ -98,7 +115,10 @@ const TenantsPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                     <h2 className="text-lg font-semibold text-gray-900">All Tenants ({tenants.length})</h2>
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    >
                         <Plus className="w-5 h-5" />
                         <span>Create Tenant</span>
                     </button>
@@ -141,10 +161,17 @@ const TenantsPage: React.FC = () => {
                                             {getStatusBadge(tenant.status)}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            {new Date(tenant.createdAt).toLocaleDateString()}
+                                            {new Date(tenant.createdAt || tenant.created_at || Date.now()).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => navigate(`/tenants/${tenant.id}`)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="View Details"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
                                                 {tenant.status === 'active' || tenant.status === 'trial' ? (
                                                     <button
                                                         onClick={() => handleSuspend(tenant.id)}
@@ -162,6 +189,13 @@ const TenantsPage: React.FC = () => {
                                                         <Power className="w-4 h-4" />
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => handleDelete(tenant.id)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -171,6 +205,14 @@ const TenantsPage: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <CreateTenantModal
+                isOpen={isCreateModalOpen}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    loadTenants(); // Refresh the list after modal closes
+                }}
+            />
         </div>
     );
 };

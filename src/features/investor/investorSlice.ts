@@ -1,126 +1,119 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { investorApi, type Investor, type InvestorCategory, type Investment } from '../../api/investorApi';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { investorApi } from '../../api/investorApi';
+import type { Investor, InvestorAccountAssignment } from '../../types/business.types';
 
 interface InvestorState {
     investors: Investor[];
-    categories: InvestorCategory[];
-    investments: Investment[];
     selectedInvestor: Investor | null;
-    selectedCategory: InvestorCategory | null;
+    assignments: InvestorAccountAssignment[];
+    portfolio: any | null;
     isLoading: boolean;
     error: string | null;
 }
 
 const initialState: InvestorState = {
     investors: [],
-    categories: [],
-    investments: [],
     selectedInvestor: null,
-    selectedCategory: null,
+    assignments: [],
+    portfolio: null,
     isLoading: false,
-    error: null
+    error: null,
 };
 
-// Investor thunks
+// Async thunks
 export const fetchInvestors = createAsyncThunk(
-    'investor/fetchInvestors',
-    async () => {
-        const response = await investorApi.getAllInvestors();
-        return response.data;
-    }
-);
-
-export const createInvestor = createAsyncThunk(
-    'investor/createInvestor',
-    async (data: { name: string; email?: string; phone?: string; totalCapital?: number }) => {
-        const response = await investorApi.createInvestor(data);
-        return response.data;
+    'investors/fetchAll',
+    async (_, { rejectWithValue }) => {
+        try {
+            return await investorApi.getAll();
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to fetch investors');
+        }
     }
 );
 
 export const fetchInvestorById = createAsyncThunk(
-    'investor/fetchInvestorById',
-    async (id: number) => {
-        const response = await investorApi.getInvestorById(id);
-        return response.data;
+    'investors/fetchOne',
+    async (id: number, { rejectWithValue }) => {
+        try {
+            return await investorApi.getById(id);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to fetch investor details');
+        }
+    }
+);
+
+export const createInvestor = createAsyncThunk(
+    'investors/create',
+    async (data: { name: string; email: string; phone: string; totalCapital: number }, { rejectWithValue }) => {
+        try {
+            return await investorApi.create(data);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to create investor');
+        }
     }
 );
 
 export const addCapital = createAsyncThunk(
-    'investor/addCapital',
-    async ({ id, amount }: { id: number; amount: number }) => {
-        const response = await investorApi.addCapital(id, amount);
-        return response.data;
+    'investors/addCapital',
+    async ({ id, amount }: { id: number; amount: number }, { rejectWithValue }) => {
+        try {
+            return await investorApi.addCapital(id, amount);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to add capital');
+        }
     }
 );
 
-// Category thunks
-export const fetchCategories = createAsyncThunk(
-    'investor/fetchCategories',
-    async () => {
-        const response = await investorApi.getAllCategories();
-        return response.data;
+export const assignAccount = createAsyncThunk(
+    'investors/assignAccount',
+    async ({ investorId, data }: { investorId: number; data: { customerId: number; accountId: number } }, { rejectWithValue }) => {
+        try {
+            return await investorApi.assignAccount(investorId, data);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to assign account');
+        }
     }
 );
 
-export const createCategory = createAsyncThunk(
-    'investor/createCategory',
-    async (data: { categoryName: string; investorId?: number; description?: string }) => {
-        const response = await investorApi.createCategory(data);
-        return response.data;
+export const fetchInvestorAssignments = createAsyncThunk(
+    'investors/fetchAssignments',
+    async (investorId: number, { rejectWithValue }) => {
+        try {
+            return await investorApi.getAssignedAccounts(investorId);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to fetch assignments');
+        }
     }
 );
 
-export const assignAccounts = createAsyncThunk(
-    'investor/assignAccounts',
-    async ({ categoryId, accountIds }: { categoryId: number; accountIds: number[] }) => {
-        const response = await investorApi.assignAccountsToCategory(categoryId, accountIds);
-        return response.data;
-    }
-);
-
-// Investment thunks
-export const fetchInvestments = createAsyncThunk(
-    'investor/fetchInvestments',
-    async (status?: string) => {
-        const response = await investorApi.getAllInvestments(status);
-        return response.data;
-    }
-);
-
-export const updateMarketPrice = createAsyncThunk(
-    'investor/updateMarketPrice',
-    async ({ id, price }: { id: number; price: number }) => {
-        const response = await investorApi.updateMarketPrice(id, price);
-        return response.data;
-    }
-);
-
-export const sellShares = createAsyncThunk(
-    'investor/sellShares',
-    async ({ id, data }: { id: number; data: { sharesSold: number; salePricePerShare: number; adminFeePerAccount?: number } }) => {
-        const response = await investorApi.sellShares(id, data);
-        return response.data;
+export const fetchInvestorPortfolio = createAsyncThunk(
+    'investors/fetchPortfolio',
+    async (investorId: number, { rejectWithValue }) => {
+        try {
+            return await investorApi.getPortfolio(investorId);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to fetch portfolio');
+        }
     }
 );
 
 const investorSlice = createSlice({
-    name: 'investor',
+    name: 'investors',
     initialState,
     reducers: {
+        setSelectedInvestor: (state, action: PayloadAction<Investor | null>) => {
+            state.selectedInvestor = action.payload;
+            state.assignments = []; // Clear assignments when switching
+            state.portfolio = null;
+        },
         clearError: (state) => {
             state.error = null;
         },
-        setSelectedInvestor: (state, action) => {
-            state.selectedInvestor = action.payload;
-        },
-        setSelectedCategory: (state, action) => {
-            state.selectedCategory = action.payload;
-        }
     },
     extraReducers: (builder) => {
         builder
-            // Fetch investors
+            // Fetch All
             .addCase(fetchInvestors.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -131,17 +124,17 @@ const investorSlice = createSlice({
             })
             .addCase(fetchInvestors.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.error.message || 'Failed to fetch investors';
+                state.error = action.payload as string;
             })
-            // Create investor
-            .addCase(createInvestor.fulfilled, (state, action) => {
-                state.investors.push(action.payload);
-            })
-            // Fetch investor by ID
+            // Fetch One
             .addCase(fetchInvestorById.fulfilled, (state, action) => {
                 state.selectedInvestor = action.payload;
             })
-            // Add capital
+            // Create
+            .addCase(createInvestor.fulfilled, (state, action) => {
+                state.investors.unshift(action.payload);
+            })
+            // Add Capital
             .addCase(addCapital.fulfilled, (state, action) => {
                 const index = state.investors.findIndex(i => i.id === action.payload.id);
                 if (index !== -1) {
@@ -151,27 +144,20 @@ const investorSlice = createSlice({
                     state.selectedInvestor = action.payload;
                 }
             })
-            // Fetch categories
-            .addCase(fetchCategories.fulfilled, (state, action) => {
-                state.categories = action.payload;
+            // Assign Account
+            .addCase(assignAccount.fulfilled, (state, action) => {
+                state.assignments.unshift(action.payload);
             })
-            // Create category
-            .addCase(createCategory.fulfilled, (state, action) => {
-                state.categories.push(action.payload);
+            // Fetch Assignments
+            .addCase(fetchInvestorAssignments.fulfilled, (state, action) => {
+                state.assignments = action.payload;
             })
-            // Fetch investments
-            .addCase(fetchInvestments.fulfilled, (state, action) => {
-                state.investments = action.payload;
-            })
-            // Update market price
-            .addCase(updateMarketPrice.fulfilled, (state, action) => {
-                const index = state.investments.findIndex(i => i.id === action.payload.id);
-                if (index !== -1) {
-                    state.investments[index] = action.payload;
-                }
+            // Fetch Portfolio
+            .addCase(fetchInvestorPortfolio.fulfilled, (state, action) => {
+                state.portfolio = action.payload;
             });
-    }
+    },
 });
 
-export const { clearError, setSelectedInvestor, setSelectedCategory } = investorSlice.actions;
+export const { setSelectedInvestor, clearError } = investorSlice.actions;
 export default investorSlice.reducer;

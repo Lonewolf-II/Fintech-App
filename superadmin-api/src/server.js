@@ -13,6 +13,7 @@ import licenseRoutes from './routes/licenses.js';
 import ipWhitelistRoutes from './routes/ipWhitelists.js';
 import paymentRoutes from './routes/payments.js';
 import auditRoutes from './routes/audit.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ const PORT = process.env.PORT || 4000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-    origin: ['http://localhost:5174', 'http://localhost:5173'],
+    origin: ['http://localhost:5174', 'http://localhost:5173', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5180'],
     credentials: true
 }));
 app.use(morgan('dev'));
@@ -42,6 +43,7 @@ app.use('/api/licenses', licenseRoutes);
 app.use('/api/ip-whitelists', ipWhitelistRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
@@ -59,10 +61,11 @@ async function startServer() {
         console.log('✅ Connected to central management database');
 
         // Sync models (in development)
-        if (process.env.NODE_ENV === 'development') {
-            await centralSequelize.sync({ alter: true });
-            console.log('✅ Database models synced');
-        }
+        // Disabled: Schema is managed via schema.sql file
+        // if (process.env.NODE_ENV === 'development') {
+        //     await centralSequelize.sync({ alter: true });
+        //     console.log('✅ Database models synced');
+        // }
 
         // Start server
         app.listen(PORT, () => {

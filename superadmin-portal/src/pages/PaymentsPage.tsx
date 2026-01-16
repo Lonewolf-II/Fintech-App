@@ -84,6 +84,22 @@ const PaymentsPage: React.FC = () => {
                                                 <span className="text-gray-500">Amount:</span>
                                                 <span className="ml-2 font-medium">NPR {payment.amount}</span>
                                             </div>
+                                            {payment.subscription && (
+                                                <>
+                                                    <div className="col-span-2 sm:col-span-1">
+                                                        <span className="text-gray-500">Package:</span>
+                                                        <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs uppercase font-semibold">
+                                                            {payment.subscription.planName}
+                                                        </span>
+                                                    </div>
+                                                    <div className="col-span-2 sm:col-span-1">
+                                                        <span className="text-gray-500">Expiry/Renewal:</span>
+                                                        <span className="ml-2 font-medium">
+                                                            {new Date(payment.subscription.endDate).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            )}
                                             <div>
                                                 <span className="text-gray-500">Method:</span>
                                                 <span className="ml-2">{payment.paymentMethod === 'qr_code' ? 'UPI/QR' : 'Bank Transfer'}</span>

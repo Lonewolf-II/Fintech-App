@@ -8,7 +8,7 @@ const Account = sequelize.define('Account', {
         autoIncrement: true
     },
     accountNumber: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(13),
         unique: true,
         allowNull: false,
         field: 'account_number'
@@ -17,6 +17,11 @@ const Account = sequelize.define('Account', {
         type: DataTypes.STRING,
         allowNull: true,
         field: 'account_name'
+    },
+    shortName: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        field: 'short_name'
     },
     bankName: {
         type: DataTypes.STRING,
@@ -68,6 +73,22 @@ const Account = sequelize.define('Account', {
         type: DataTypes.DATEONLY,
         defaultValue: DataTypes.NOW,
         field: 'opening_date'
+    },
+    dematAccountNumber: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'demat_account_number'
+    },
+    meroshareId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'meroshare_id'
+    },
+    availableBalance: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return parseFloat(this.balance || 0) - parseFloat(this.blockedAmount || 0);
+        }
     }
 }, {
     tableName: 'accounts',

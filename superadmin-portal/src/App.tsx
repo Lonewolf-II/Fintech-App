@@ -6,9 +6,12 @@ import { useAppSelector, useAppDispatch } from './hooks/useRedux';
 import { fetchMe } from './store/authSlice';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
+import DashboardPage from './pages/DashboardPage';
 import TenantsPage from './pages/TenantsPage';
+import TenantDetailsPage from './pages/TenantDetailsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
+import InactiveTenantsPage from './pages/InactiveTenantsPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { token } = useAppSelector((state) => state.auth);
@@ -34,8 +37,11 @@ const AppRoutes: React.FC = () => {
                     <ProtectedRoute>
                         <DashboardLayout>
                             <Routes>
-                                <Route path="/" element={<Navigate to="/tenants" />} />
+                                <Route path="/" element={<Navigate to="/dashboard" />} />
+                                <Route path="/dashboard" element={<DashboardPage />} />
                                 <Route path="/tenants" element={<TenantsPage />} />
+                                <Route path="/tenants/inactive" element={<InactiveTenantsPage />} />
+                                <Route path="/tenants/:id" element={<TenantDetailsPage />} />
                                 <Route path="/payments" element={<PaymentsPage />} />
                                 <Route path="/audit" element={<AuditLogsPage />} />
                             </Routes>

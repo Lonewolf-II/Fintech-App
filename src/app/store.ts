@@ -7,6 +7,9 @@ import portfolioReducer from '../features/portfolio/portfolioSlice';
 import checkerReducer from '../features/checker/checkerSlice';
 import adminReducer from '../features/admin/adminSlice';
 import investorReducer from '../features/investor/investorSlice';
+import ipoReducer from '../features/ipo/ipoSlice';
+import profitReducer from '../features/investor/profitSlice';
+import feeReducer from '../features/admin/feeSlice';
 
 export const store = configureStore({
     reducer: {
@@ -17,7 +20,10 @@ export const store = configureStore({
         portfolio: portfolioReducer,
         checker: checkerReducer,
         admin: adminReducer,
-        investor: investorReducer
+        investor: investorReducer,
+        ipo: ipoReducer,
+        profit: profitReducer,
+        fees: feeReducer,
     },
 });
 

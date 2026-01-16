@@ -41,4 +41,11 @@ export const customerApi = {
         const response = await apiClient.post(`/customers/${customerId}/credentials`, credentialData);
         return response.data;
     },
+
+    downloadBulkUploadTemplate: async (): Promise<Blob> => {
+        const response = await apiClient.get('/customers/bulk-upload/template', {
+            responseType: 'blob',
+        });
+        return response.data;
+    },
 };

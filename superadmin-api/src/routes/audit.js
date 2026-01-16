@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
                 { model: Tenant, as: 'tenant', attributes: ['id', 'companyName', 'subdomain'] },
                 { model: Superadmin, as: 'superadmin', attributes: ['id', 'name', 'email'] }
             ],
-            order: [['createdAt', 'DESC']],
+            order: [['created_at', 'DESC']],
             limit: parseInt(limit)
         });
 

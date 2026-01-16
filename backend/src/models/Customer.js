@@ -61,6 +61,11 @@ const Customer = sequelize.define('Customer', {
             model: 'users',
             key: 'id'
         }
+    },
+    accountOpeningDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        field: 'account_opening_date'
     }
 }, {
     tableName: 'customers',

@@ -57,6 +57,12 @@ const Investor = sequelize.define('Investor', {
             model: 'users',
             key: 'id'
         }
+    },
+    specialAccountNumber: {
+        type: DataTypes.STRING(13),
+        unique: true,
+        allowNull: true,
+        field: 'special_account_number'
     }
 }, {
     tableName: 'investors',

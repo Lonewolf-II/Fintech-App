@@ -7,7 +7,11 @@ export const login = async (req, res) => {
 
         // Find user by email or staff ID
         const staffId = parseInt(email);
-        const user = await User.findOne({
+        // Use tenant-specific User model if available (via tenantContext middleware)
+        // Otherwise fall back to imported User (for non-tenant contexts if any, but middleware ensures tenant)
+        const UserModel = req.tenantModels ? req.tenantModels.User : User;
+
+        const user = await UserModel.findOne({
             where: !isNaN(staffId)
                 ? { staffId }
                 : { email }

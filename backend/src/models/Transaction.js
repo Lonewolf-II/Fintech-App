@@ -23,7 +23,7 @@ const Transaction = sequelize.define('Transaction', {
         }
     },
     transactionType: {
-        type: DataTypes.ENUM('deposit', 'withdrawal', 'transfer'),
+        type: DataTypes.ENUM('deposit', 'withdrawal', 'transfer', 'ipo_hold', 'ipo_release', 'ipo_allotment', 'share_sale', 'profit_distribution', 'fee_deduction', 'principal_return'),
         allowNull: false,
         field: 'transaction_type'
     },
@@ -38,6 +38,20 @@ const Transaction = sequelize.define('Transaction', {
     },
     description: {
         type: DataTypes.TEXT
+    },
+    remarks: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    referenceId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'reference_id'
+    },
+    referenceType: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'reference_type'
     },
     createdBy: {
         type: DataTypes.INTEGER,

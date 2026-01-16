@@ -23,8 +23,8 @@ dotenv.config();
 // Central Management Database Connection
 const centralSequelize = new Sequelize(
     process.env.CENTRAL_DB_NAME || 'fintech_central',
-    process.env.CENTRAL_DB_USER || 'postgres',
-    process.env.CENTRAL_DB_PASSWORD || 'postgres',
+    process.env.CENTRAL_DB_USER || 'fintech_user',
+    process.env.CENTRAL_DB_PASSWORD || 'fintech_password',
     {
         host: process.env.CENTRAL_DB_HOST || 'localhost',
         port: process.env.CENTRAL_DB_PORT || 5432,

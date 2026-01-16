@@ -22,6 +22,15 @@ const Holding = sequelize.define('Holding', {
             key: 'id'
         }
     },
+    investmentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'investment_id',
+        references: {
+            model: 'investments',
+            key: 'id'
+        }
+    },
     stockSymbol: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -54,6 +63,28 @@ const Holding = sequelize.define('Holding', {
         type: DataTypes.DATEONLY,
         defaultValue: DataTypes.NOW,
         field: 'purchase_date'
+    },
+    lastTransactionPrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        field: 'last_transaction_price'
+    },
+    lastClosingPrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        field: 'last_closing_price'
+    },
+    valueAtClosing: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return parseFloat(this.quantity || 0) * parseFloat(this.lastClosingPrice || 0);
+        }
+    },
+    valueAtLTP: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return parseFloat(this.quantity || 0) * parseFloat(this.lastTransactionPrice || 0);
+        }
     }
 }, {
     tableName: 'holdings',

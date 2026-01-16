@@ -58,6 +58,10 @@ export default (sequelize) => {
         notes: {
             type: DataTypes.TEXT
         },
+        dueDate: {
+            type: DataTypes.DATE,
+            field: 'due_date'
+        },
         submittedAt: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW,

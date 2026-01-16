@@ -72,6 +72,30 @@ export const tenantsApi = {
     delete: async (id: number) => {
         const response = await apiClient.delete(`/tenants/${id}`);
         return response.data;
+    },
+    getUsers: async (id: number) => {
+        const response = await apiClient.get(`/tenants/${id}/users`);
+        return response.data;
+    },
+    addUser: async (id: number, userData: any) => {
+        const response = await apiClient.post(`/tenants/${id}/users`, userData);
+        return response.data;
+    },
+    removeUser: async (id: number, userId: number) => {
+        const response = await apiClient.delete(`/tenants/${id}/users/${userId}`);
+        return response.data;
+    },
+    getStats: async (id: number) => {
+        const response = await apiClient.get(`/tenants/${id}/stats`);
+        return response.data;
+    },
+    getHealth: async (id: number) => {
+        const response = await apiClient.get(`/tenants/${id}/health`);
+        return response.data;
+    },
+    getPerformance: async (id: number) => {
+        const response = await apiClient.get(`/tenants/${id}/performance`);
+        return response.data;
     }
 };
 
@@ -123,6 +147,21 @@ export const paymentsApi = {
 export const auditApi = {
     getLogs: async (params?: { tenantId?: number; superadminId?: number; action?: string; limit?: number }) => {
         const response = await apiClient.get('/audit', { params });
+        return response.data;
+    }
+};
+
+export const dashboardApi = {
+    getStats: async () => {
+        const response = await apiClient.get('/dashboard/stats');
+        return response.data;
+    },
+    getRecentActivity: async (limit: number = 20) => {
+        const response = await apiClient.get('/dashboard/recent-activity', { params: { limit } });
+        return response.data;
+    },
+    getSystemHealth: async () => {
+        const response = await apiClient.get('/dashboard/health');
         return response.data;
     }
 };

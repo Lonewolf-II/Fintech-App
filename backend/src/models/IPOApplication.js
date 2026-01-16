@@ -16,6 +16,15 @@ const IPOApplication = sequelize.define('IPOApplication', {
             key: 'id'
         }
     },
+    ipoListingId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'ipo_listing_id',
+        references: {
+            model: 'ipo_listings',
+            key: 'id'
+        }
+    },
     companyName: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -44,6 +53,15 @@ const IPOApplication = sequelize.define('IPOApplication', {
         defaultValue: DataTypes.NOW,
         field: 'applied_at'
     },
+    appliedBy: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'applied_by',
+        references: {
+            model: 'users',
+            key: 'id'
+        }
+    },
     verifiedBy: {
         type: DataTypes.INTEGER,
         field: 'verified_by',
@@ -51,6 +69,31 @@ const IPOApplication = sequelize.define('IPOApplication', {
             model: 'users',
             key: 'id'
         }
+    },
+    verificationDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'verification_date'
+    },
+    rejectionReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'rejection_reason'
+    },
+    allotmentStatus: {
+        type: DataTypes.ENUM('pending', 'allotted', 'not_allotted'),
+        defaultValue: 'pending',
+        field: 'allotment_status'
+    },
+    allotmentQuantity: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'allotment_quantity'
+    },
+    allotmentDate: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'allotment_date'
     }
 }, {
     tableName: 'ipo_applications',

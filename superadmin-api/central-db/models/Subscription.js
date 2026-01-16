@@ -17,7 +17,7 @@ export default (sequelize) => {
             field: 'tenant_id'
         },
         planName: {
-            type: DataTypes.ENUM('starter', 'professional', 'enterprise', 'custom'),
+            type: DataTypes.ENUM('starter', 'professional', 'enterprise', 'custom', 'silver', 'gold', 'platinum'),
             allowNull: false,
             field: 'plan_name'
         },
@@ -42,7 +42,7 @@ export default (sequelize) => {
             field: 'price_per_month'
         },
         billingCycle: {
-            type: DataTypes.ENUM('monthly', 'yearly'),
+            type: DataTypes.ENUM('monthly', 'quarterly', 'semiannually', 'yearly'),
             defaultValue: 'monthly',
             field: 'billing_cycle'
         },

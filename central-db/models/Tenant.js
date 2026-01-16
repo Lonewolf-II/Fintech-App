@@ -50,7 +50,7 @@ export default (sequelize) => {
             // Note: Will be encrypted before storage
         },
         status: {
-            type: DataTypes.ENUM('active', 'suspended', 'trial', 'expired'),
+            type: DataTypes.ENUM('active', 'suspended', 'trial', 'expired', 'inactive'),
             defaultValue: 'trial'
         },
         suspendedAt: {

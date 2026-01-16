@@ -2,7 +2,21 @@ import { Tenant, License, IPWhitelist } from '../../central-db/index.js';
 import { getTenantDatabase, initializeTenantModels } from '../config/tenantDatabase.js';
 
 // Middleware to extract and validate tenant context
+const EXCLUDED_ROUTES = [
+    '/api/tenants',
+    '/api/dashboard',
+    '/api/admin/login',
+    '/api/health'
+];
+
 export async function tenantContext(req, res, next) {
+    // Skip if route matches any excluded path (prefix match)
+    const isExcluded = EXCLUDED_ROUTES.some(route => req.originalUrl.startsWith(route));
+    if (isExcluded) {
+        console.log(`⏩ [TenantContext] Skipping excluded route: ${req.originalUrl}`);
+        return next();
+    }
+
     try {
         // Extract tenant identifier from subdomain or header
         let tenantKey = null;

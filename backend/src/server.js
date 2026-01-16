@@ -18,8 +18,13 @@ import ipoRoutes from './routes/ipo.js';
 import checkerRoutes from './routes/checker.js';
 import adminRoutes from './routes/admin.js';
 import investorRoutes from './routes/investor.js';
+import investorsRoutes from './routes/investors.js';
 import categoryRoutes from './routes/category.js';
 import investmentRoutes from './routes/investment.js';
+import profitDistributionRoutes from './routes/profitDistribution.js';
+import adminDashboardRoutes from './routes/adminDashboard.js';
+import feeRoutes from './routes/fees.js';
+import tenantRoutes from './routes/tenants.js';
 
 dotenv.config();
 
@@ -76,8 +81,13 @@ app.use('/api/ipo', requireFeature('ipo'), ipoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/checker', checkerRoutes);
 app.use('/api', investorRoutes);
+app.use('/api/investors', requireFeature('ipo'), investorsRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', investmentRoutes);
+app.use('/api/profit-distribution', requireFeature('ipo'), profitDistributionRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/fees', requireFeature('ipo'), feeRoutes);
+app.use('/api/tenants', tenantRoutes);
 
 
 
