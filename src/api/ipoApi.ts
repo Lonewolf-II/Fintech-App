@@ -1,12 +1,12 @@
 import apiClient from './apiClient';
 
 export interface IPOApplication {
-    id: string;
-    customerId: string;
+    id: number;
+    customerId: number;
     companyName: string;
     quantity: number;
     pricePerShare: number;
-    totalAmount: string | number;
+    totalAmount: number;
     status: 'pending' | 'verified' | 'allotted' | 'rejected';
     createdAt: string;
     customer?: {

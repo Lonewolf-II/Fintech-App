@@ -206,10 +206,11 @@ const customerSlice = createSlice({
                 state.isLoading = true;
                 state.error = null;
             })
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            .addCase(uploadBulkCustomers.fulfilled, (state, _action) => {
+            .addCase(uploadBulkCustomers.fulfilled, (state, action) => {
                 state.isLoading = false;
-                // Ideally refresh customers list or add returned customers
+                if (action.payload.createdCustomers && Array.isArray(action.payload.createdCustomers)) {
+                    state.customers.unshift(...action.payload.createdCustomers);
+                }
             })
             .addCase(uploadBulkCustomers.rejected, (state, action) => {
                 state.isLoading = false;

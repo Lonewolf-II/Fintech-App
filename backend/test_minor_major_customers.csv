@@ -1,0 +1,4 @@
+Customer Name,Mobile Number,Email,Date of Birth,Bank Name,Branch Name,Account Number
+Test Minor Customer,9801111111,minor.test@example.com,2010-05-15,Nepal Bank,Kathmandu,3001000000020
+Test Major Customer,9802222222,major.test@example.com,1995-03-20,Nepal Bank,Kathmandu,3001000000021
+Another Minor,9803333333,minor2.test@example.com,2012-08-10,Nabil Bank,Pokhara,3001000000022

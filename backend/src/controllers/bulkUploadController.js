@@ -5,7 +5,8 @@ import fs from 'fs';
 import {
     generateCustomerAccountNumber,
     generateAccountShortName,
-    validateCustomerRow
+    validateCustomerRow,
+    isAtLeast18YearsOld
 } from '../utils/accountHelpers.js';
 
 /**
@@ -53,13 +54,35 @@ export const bulkUploadCustomers = async (req, res) => {
 
         // Process each row
         for (let i = 0; i < results.length; i++) {
-            const row = results[i];
+            const rawRow = results[i];
             const rowIndex = i + 2; // +2 because row 1 is header, array is 0-indexed
+
+            // Normalize row data - trim all keys and values, handle BOM
+            const row = {};
+            Object.keys(rawRow).forEach(key => {
+                // Remove BOM and trim whitespace from keys
+                const cleanKey = key.replace(/^\uFEFF/, '').trim();
+                // Trim values
+                const cleanValue = typeof rawRow[key] === 'string' ? rawRow[key].trim() : rawRow[key];
+                row[cleanKey] = cleanValue;
+            });
+
+            // Log the row for debugging
+            console.log(`\n📋 Processing row ${rowIndex}:`, {
+                'Customer Name': row['Customer Name'],
+                'Mobile Number': row['Mobile Number'],
+                'Email': row['Email'],
+                'Date of Birth': row['Date of Birth']
+            });
 
             // Validate row
             const validation = validateCustomerRow(row, rowIndex);
             if (!validation.valid) {
-                // ... error handling
+                // Log validation errors for debugging
+                console.error(`❌ Validation failed for row ${rowIndex}:`, validation.errors);
+                console.error(`   Raw data:`, rawRow);
+                console.error(`   Cleaned data:`, row);
+
                 failedRecords.push({
                     row: rowIndex,
                     data: row,
@@ -77,10 +100,10 @@ export const bulkUploadCustomers = async (req, res) => {
                 // Create customer
                 const customer = await Customer.create({
                     customerId,
-                    fullName: row['Customer Name'].trim(),
-                    email: row['Email'].trim().toLowerCase(),
-                    phone: row['Mobile Number'].trim(),
-                    dateOfBirth: row['Date of Birth'].trim(),
+                    fullName: row['Customer Name'],
+                    email: row['Email'].toLowerCase(),
+                    phone: row['Mobile Number'],
+                    dateOfBirth: row['Date of Birth'],
                     // ... other fields
                     accountType: 'individual',
                     kycStatus: 'pending',
@@ -89,8 +112,12 @@ export const bulkUploadCustomers = async (req, res) => {
                 }, { transaction });
 
                 // Check if account number is provided in CSV
-                let accountNumber = row['Account Number'] ? row['Account Number'].trim() : null;
+                let accountNumber = row['Account Number'] || null;
                 let account = null;
+
+                // Determine if customer is major or minor
+                const isMajor = isAtLeast18YearsOld(row['Date of Birth']);
+                const accountCategory = isMajor ? 'major' : 'minor';
 
                 // Only create account if account number is provided
                 if (accountNumber) {
@@ -101,18 +128,19 @@ export const bulkUploadCustomers = async (req, res) => {
                     }
 
                     // Generate account name and short name
-                    const accountName = `${row['Customer Name'].trim()} - ${row['Bank Name']?.trim() || 'Bank'}`;
-                    const shortName = generateAccountShortName(row['Customer Name'].trim(), accountNumber);
+                    const accountName = `${row['Customer Name']} - ${row['Bank Name'] || 'Bank'}`;
+                    const shortName = generateAccountShortName(row['Customer Name'], accountNumber);
 
-                    // Create account
+                    // Create account with category
                     account = await Account.create({
                         accountNumber,
                         accountName,
                         shortName,
-                        bankName: row['Bank Name']?.trim(),
-                        branch: row['Branch Name']?.trim() || 'Main Branch', // Default if not provided
+                        bankName: row['Bank Name'] || null,
+                        branch: row['Branch Name'] || 'Main Branch',
                         customerId: customer.id,
                         accountType: 'savings',
+                        accountCategory: accountCategory,
                         balance: 0.00,
                         blockedAmount: 0.00,
                         isPrimary: true,
@@ -131,6 +159,8 @@ export const bulkUploadCustomers = async (req, res) => {
                 }, { transaction });
 
                 await transaction.commit();
+
+                console.log(`✅ Created customer ${rowIndex}: ${customer.fullName} (${customer.customerId})`);
 
                 successRecords.push({
                     row: rowIndex,
@@ -157,6 +187,31 @@ export const bulkUploadCustomers = async (req, res) => {
         // Clean up uploaded file
         fs.unlinkSync(req.file.path);
 
+        // Fetch all created customers with their accounts
+        const createdCustomerIds = successRecords.map(r => r.customerId);
+        const createdCustomers = await Customer.findAll({
+            where: { customerId: { [Op.in]: createdCustomerIds } },
+            include: [
+                { association: 'accounts' },
+                { association: 'creator', attributes: ['name'] }
+            ]
+        });
+
+        // Log summary
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`📊 BULK UPLOAD SUMMARY`);
+        console.log(`${'='.repeat(60)}`);
+        console.log(`✅ Successfully created: ${successRecords.length} customers`);
+        console.log(`❌ Failed: ${failedRecords.length} rows`);
+        console.log(`📋 Total processed: ${results.length} rows`);
+        if (failedRecords.length > 0) {
+            console.log(`\n❌ Failed rows:`);
+            failedRecords.forEach(f => {
+                console.log(`   Row ${f.row}: ${f.errors.join(', ')}`);
+            });
+        }
+        console.log(`${'='.repeat(60)}\n`);
+
         // Return results
         res.json({
             message: `Processed ${results.length} rows`,
@@ -165,6 +220,8 @@ export const bulkUploadCustomers = async (req, res) => {
                 successful: successRecords.length,
                 failed: failedRecords.length
             },
+            createdCount: successRecords.length,
+            createdCustomers: createdCustomers,
             successRecords,
             failedRecords: failedRecords.length > 0 ? failedRecords : undefined
         });

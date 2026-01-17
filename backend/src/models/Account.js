@@ -47,6 +47,12 @@ const Account = sequelize.define('Account', {
         allowNull: false,
         field: 'account_type'
     },
+    accountCategory: {
+        type: DataTypes.ENUM('major', 'minor'),
+        allowNull: true,
+        defaultValue: 'major',
+        field: 'account_category'
+    },
     balance: {
         type: DataTypes.DECIMAL(15, 2),
         defaultValue: 0.00

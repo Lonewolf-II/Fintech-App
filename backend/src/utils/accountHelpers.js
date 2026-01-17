@@ -63,7 +63,8 @@ export const isValidEmail = (email) => {
  * @returns {boolean}
  */
 export const isValidPhone = (phone) => {
-    const phoneRegex = /^98[0-9]{8}$/;
+    // More flexible: accept any 10-digit number starting with 9
+    const phoneRegex = /^9[0-9]{9}$/;
     return phoneRegex.test(phone);
 };
 
@@ -118,7 +119,7 @@ export const validateCustomerRow = (row, rowIndex) => {
     if (!row['Mobile Number'] || row['Mobile Number'].trim() === '') {
         errors.push(`Row ${rowIndex}: Mobile Number is required`);
     } else if (!isValidPhone(row['Mobile Number'].trim())) {
-        errors.push(`Row ${rowIndex}: Invalid mobile number format. Must be 10 digits starting with 98`);
+        errors.push(`Row ${rowIndex}: Invalid mobile number format. Must be 10 digits starting with 9`);
     }
 
     if (!row['Email'] || row['Email'].trim() === '') {
@@ -131,9 +132,8 @@ export const validateCustomerRow = (row, rowIndex) => {
         errors.push(`Row ${rowIndex}: Date of Birth is required`);
     } else if (!isValidDate(row['Date of Birth'].trim())) {
         errors.push(`Row ${rowIndex}: Invalid date format. Use YYYY-MM-DD`);
-    } else if (!isAtLeast18YearsOld(row['Date of Birth'].trim())) {
-        errors.push(`Row ${rowIndex}: Customer must be at least 18 years old`);
     }
+    // Note: Age restriction removed - accounts will be classified as major/minor
 
     // Bank Name is optional if no account is created
     if (row['Bank Name'] && row['Bank Name'].trim() !== '') {

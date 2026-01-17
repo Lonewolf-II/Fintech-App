@@ -29,7 +29,7 @@ export const AccountStatementPage: React.FC = () => {
         type: 'all'
     });
 
-    const account = accounts.find(acc => acc.id === accountId);
+    const account = accounts.find(acc => acc.id.toString() === accountId);
 
     useEffect(() => {
         if (accounts.length === 0) {

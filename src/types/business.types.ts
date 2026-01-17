@@ -108,7 +108,7 @@ export interface IPOApplication {
     createdAt: string;
     updatedAt?: string;
     // Relations
-    customer?: Customer;
+    customer?: Partial<Customer>;
     listing?: IPOListing;
 }
 

@@ -130,6 +130,19 @@ export const createCustomer = async (req, res) => {
         const bankAccountType = accountType === 'corporate' ? 'current' : 'savings';
         const finalAccountNumber = accountNumber || `ACC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+        // Determine account category based on age
+        const isMajor = dateOfBirth ? (() => {
+            const today = new Date();
+            const birthDate = new Date(dateOfBirth);
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                return age - 1 >= 18;
+            }
+            return age >= 18;
+        })() : true; // Default to major if no DOB
+        const accountCategory = isMajor ? 'major' : 'minor';
+
         await Account.create({
             accountNumber: finalAccountNumber,
             accountName: accountName || fullName,
@@ -137,6 +150,7 @@ export const createCustomer = async (req, res) => {
             branch: branch,
             customerId: customer.id,
             accountType: bankAccountType,
+            accountCategory: accountCategory,
             balance: 0.00,
             isPrimary: true,
             status: 'active'
@@ -221,7 +235,8 @@ export const bulkCreateCustomers = async (req, res) => {
 
             res.json({
                 message: `Processed ${results.length} rows`,
-                created: createdCustomers.length,
+                createdCount: createdCustomers.length,
+                createdCustomers: createdCustomers,
                 errors: errors.length > 0 ? errors : undefined
             });
         });
