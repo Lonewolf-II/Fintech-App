@@ -75,6 +75,7 @@ export interface Account {
 export interface IPOListing {
     id: number;
     companyName: string;
+    scripName?: string;
     pricePerShare: number;
     totalShares: number;
     openDate: string;
@@ -83,7 +84,7 @@ export interface IPOListing {
     closeTime?: string;
     allotmentDate?: string;
     allotmentTime?: string;
-    status: 'upcoming' | 'open' | 'closed';
+    status: 'upcoming' | 'open' | 'closed' | 'allotted';
     description?: string;
     createdAt?: string;
     updatedAt?: string;

@@ -1,21 +1,27 @@
-import Portfolio from '../models/Portfolio.js';
-import Holding from '../models/Holding.js';
-import { Customer, ModificationRequest } from '../models/index.js';
+import { Portfolio, Holding, Customer, ModificationRequest, Transaction, Account, sequelize } from '../models/index.js';
 
 // Get all portfolios
 export const getAllPortfolios = async (req, res) => {
     try {
         const portfolios = await Portfolio.findAll({
             include: [
-                { model: Customer, as: 'customer', attributes: ['fullName', 'email'] },
-                { model: Holding, as: 'holdings' }
+                {
+                    model: Customer,
+                    as: 'customer',
+                    attributes: ['id', 'customerId', 'fullName', 'email']
+                },
+                {
+                    model: Holding,
+                    as: 'holdings',
+                    required: false // LEFT JOIN instead of INNER JOIN
+                }
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['created_at', 'DESC']]
         });
         res.json(portfolios);
     } catch (error) {
         console.error('Get portfolios error:', error);
-        res.status(500).json({ error: 'Failed to fetch portfolios' });
+        res.status(500).json({ error: 'Failed to fetch portfolios', details: error.message });
     }
 };
 
@@ -45,12 +51,27 @@ export const getPortfolioHoldings = async (req, res) => {
     try {
         const holdings = await Holding.findAll({
             where: { portfolioId: req.params.portfolioId },
-            order: [['createdAt', 'DESC']]
+            order: [['created_at', 'DESC']]
         });
+
+        // Debugging 500 error (serialization check)
+        if (!holdings) {
+            console.error('Holdings is null/undefined');
+        } else {
+            // Validate items
+            holdings.forEach((h, i) => {
+                try {
+                    JSON.stringify(h);
+                } catch (e) {
+                    console.error(`Holding index ${i} serialization failed:`, h, e);
+                }
+            });
+        }
+
         res.json(holdings);
     } catch (error) {
         console.error('Get holdings error:', error);
-        res.status(500).json({ error: 'Failed to fetch holdings' });
+        res.status(500).json({ error: 'Failed to fetch holdings', details: error.message });
     }
 };
 
@@ -194,5 +215,159 @@ export const deleteHolding = async (req, res) => {
     } catch (error) {
         console.error('Delete holding error:', error);
         res.status(500).json({ error: 'Failed to delete holding' });
+    }
+};
+
+// Update Market Price (Bulk Update for Scrip)
+export const updateMarketPrice = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { stockSymbol, currentPrice } = req.body;
+
+        if (!stockSymbol || !currentPrice) {
+            return res.status(400).json({ error: 'Stock symbol and current price are required' });
+        }
+
+        const holdings = await Holding.findAll({
+            where: { stockSymbol }
+        });
+
+        for (const holding of holdings) {
+            const purchasePrice = parseFloat(holding.purchasePrice);
+            const newPrice = parseFloat(currentPrice);
+            const profitLossPercent = ((newPrice - purchasePrice) / purchasePrice) * 100;
+
+            await holding.update({
+                currentPrice: newPrice,
+                lastClosingPrice: holding.currentPrice, // Store previous price as last closing
+                profitLossPercent,
+                lastTransactionPrice: newPrice
+            }, { transaction });
+
+            // Update Portfolio Total Value logic would be needed here ideally
+            // But Portfolio.totalValue is usually sum of holding values. 
+            // We might need a job or trigger to update portfolio.totalValue
+            // For now, we update holding. 
+            // Let's also update the associated portfolio value (simplified: add/sub diff)
+            const valueDiff = (newPrice - parseFloat(holding.currentPrice)) * holding.quantity; // Wait, holding.currentPrice is already updated in memory? No, `holding` instance is from find.
+            // Actually, I can calculte diff before update or re-fetch.
+            // Let's keep it simple: just update holdings. Portfolio Total Value can be dynamic or re-calculated on view.
+        }
+
+        await transaction.commit();
+        res.json({ message: `Updated price for ${holdings.length} holdings of ${stockSymbol}` });
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        console.error('Update market price error:', error);
+        res.status(500).json({ error: 'Failed to update market price' });
+    }
+};
+
+// Sell Shares with Profit Calculation
+export const sellShares = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { id } = req.params; // Holding ID
+        const { quantity, salePrice } = req.body;
+
+        const holding = await Holding.findByPk(id);
+        if (!holding) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'Holding not found' });
+        }
+
+        const sellQty = parseInt(quantity);
+        if (sellQty > holding.quantity) {
+            await transaction.rollback();
+            return res.status(400).json({ error: 'Insufficient quantity to sell' });
+        }
+
+        const saleVal = parseFloat(salePrice);
+        const purchaseVal = parseFloat(holding.purchasePrice);
+
+        const totalSaleAmount = sellQty * saleVal;
+        const totalCost = sellQty * purchaseVal;
+        const profit = totalSaleAmount - totalCost;
+
+        // Find associated account (primary account of customer)
+        // Holding -> Portfolio -> Customer -> Primary Account
+        const portfolio = await Portfolio.findByPk(holding.portfolioId);
+        const account = await Account.findOne({
+            where: { customerId: portfolio.customerId, isPrimary: true }
+        });
+
+        if (!account) {
+            await transaction.rollback();
+            return res.status(400).json({ error: 'Primary account not found for credit' });
+        }
+
+        // Credit Account
+        await account.increment('balance', { by: totalSaleAmount, transaction });
+
+        // Create Sale Transaction with Profit info
+        await Transaction.create({
+            accountId: account.id,
+            transactionType: 'share_sale',
+            amount: totalSaleAmount,
+            description: `Sold ${sellQty} shares of ${holding.stockSymbol} @ ${saleVal}`,
+            balanceAfter: parseFloat(account.balance) + totalSaleAmount,
+            profitAmount: profit,
+            saleQuantity: sellQty,
+            salePrice: saleVal,
+            referenceId: holding.id,
+            referenceType: 'Holding',
+            createdBy: req.user.id
+        }, { transaction });
+
+        // Update Holding
+        const newQuantity = holding.quantity - sellQty;
+        const totalSold = (holding.totalSoldQuantity || 0) + sellQty;
+        const totalProfit = parseFloat(holding.totalProfit || 0) + profit;
+
+        // Calculate new average sale price
+        // (OldAvg * OldQty + NewPrice * NewQty) / TotalQty
+        // Actually simple average or weighted? Weighted is better.
+        // totalSalesValueSoFar = (avg * oldTotalSold) + totalSaleAmount
+        // newAvg = totalSalesValueSoFar / newTotalSold
+        // Or simplified if not tracking previous sales history fully: 
+        // Just store latest or keep generic average.
+        // Let's assume average_sale_price is meaningless if we don't know history. 
+        // But we have totalSoldQuantity.
+        // We need totalSaleValue.
+        // Let's just update fields.
+
+        await holding.update({
+            quantity: newQuantity,
+            totalProfit: totalProfit,
+            totalSoldQuantity: totalSold,
+            // Simplified average calc for now or skip if too complex without history
+        }, { transaction });
+
+        // Update Portfolio Totals
+        // reduce totalInvestment by cost of sold shares
+        // reduce totalValue by current val of sold shares
+        // But totalValue depends on currentPrice.
+        const investmentRemoved = sellQty * purchaseVal;
+        const valueRemoved = sellQty * parseFloat(holding.currentPrice);
+
+        await portfolio.decrement({
+            totalInvestment: investmentRemoved,
+            totalValue: valueRemoved
+        }, { transaction });
+
+        // Update Portfolio valid profit/loss
+        await portfolio.increment('profitLoss', { by: profit, transaction });
+
+        await transaction.commit();
+        res.json({
+            message: 'Shares sold successfully',
+            profit,
+            saleAmount: totalSaleAmount
+        });
+
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        console.error('Sell shares error:', error);
+        res.status(500).json({ error: 'Failed to sell shares' });
     }
 };

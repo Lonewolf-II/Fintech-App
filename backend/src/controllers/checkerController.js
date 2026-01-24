@@ -31,9 +31,18 @@ export const getPendingRequests = async (req, res) => {
         });
 
         // Fetch pending IPO
-        const ipo = await IPOApplication.findAll({
+        const ipoData = await IPOApplication.findAll({
             where: { status: 'pending' },
             include: [{ model: Customer, as: 'customer', attributes: ['fullName', 'customerId'] }]
+        });
+
+        // Fix: Map dates correctly
+        const ipo = ipoData.map(app => {
+            const data = app.toJSON();
+            if (!data.createdAt && (app.dataValues?.created_at || app['created_at'])) {
+                data.createdAt = app.dataValues?.created_at || app['created_at'];
+            }
+            return data;
         });
 
         res.json({

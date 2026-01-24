@@ -85,6 +85,30 @@ export const deleteHolding = createAsyncThunk(
     }
 );
 
+export const updateMarketPrice = createAsyncThunk(
+    'portfolio/updateMarketPrice',
+    async ({ stockSymbol, currentPrice }: { stockSymbol: string; currentPrice: number }, { rejectWithValue }) => {
+        try {
+            return await portfolioApi.updateMarketPrice(stockSymbol, currentPrice);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to update market price');
+        }
+    }
+);
+
+export const sellShares = createAsyncThunk(
+    'portfolio/sellShares',
+    async ({ id, data }: { id: string; data: { quantity: number; salePrice: number } }, { rejectWithValue }) => {
+        try {
+            return await portfolioApi.sellShares(id, data);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to sell shares');
+        }
+    }
+);
+
+
+
 const portfolioSlice = createSlice({
     name: 'portfolio',
     initialState,

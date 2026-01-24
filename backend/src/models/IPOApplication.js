@@ -16,6 +16,15 @@ const IPOApplication = sequelize.define('IPOApplication', {
             key: 'id'
         }
     },
+    accountId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'account_id',
+        references: {
+            model: 'accounts',
+            key: 'id'
+        }
+    },
     ipoListingId: {
         type: DataTypes.INTEGER,
         allowNull: true,

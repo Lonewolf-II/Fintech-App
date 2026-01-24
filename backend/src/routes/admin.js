@@ -5,7 +5,7 @@ import { getActivityLogs, deleteIPOApplication } from '../controllers/adminContr
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(requireRole(['admin']));
+router.use(requireRole('admin'));
 
 router.get('/logs', getActivityLogs);
 router.delete('/ipo-applications/:id', deleteIPOApplication);

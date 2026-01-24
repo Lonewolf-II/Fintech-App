@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { fetchListings, createListing, updateListingStatus } from './ipoSlice';
-import { Button } from '../../components/common/Button';
+import { fetchListings, updateListingStatus } from './ipoSlice';
 import { Modal } from '../../components/common/Modal';
 import { IPOListingForm } from './components/IPOListingForm';
-import { Plus, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { Plus, FileText, Edit2, Trash2, Users } from 'lucide-react';
 import type { IPOListing } from '../../types/business.types';
+import { formatTime12Hour, formatDate } from '../../utils/formatters';
+import toast from 'react-hot-toast';
+import { ipoApi } from '../../api/ipoApi';
+import { Card, Badge, ActionButton, PageHeader } from '../../components/ui';
 
 export const IPOManagement: React.FC = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const { listings, isLoading } = useAppSelector((state) => state.ipo);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedListing, setSelectedListing] = useState<IPOListing | null>(null);
@@ -33,223 +38,179 @@ export const IPOManagement: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleStatusChange = async (id: number, newStatus: string) => {
-        await dispatch(updateListingStatus({ id, status: newStatus }));
-    };
-
     const handleFormSuccess = () => {
         setIsModalOpen(false);
         setSelectedListing(null);
     };
 
-    const getStatusColor = (status: string) => {
+    const handleDelete = async (listing: IPOListing) => {
+        if (!confirm(`Are you sure you want to delete the IPO listing for "${listing.companyName}"?`)) {
+            return;
+        }
+
+        try {
+            await ipoApi.deleteListing(listing.id);
+            toast.success('IPO listing deleted successfully');
+            dispatch(fetchListings());
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Failed to delete IPO listing');
+        }
+    };
+
+    const handleViewApplications = (listing: IPOListing) => {
+        navigate(`/ipo/applications?listing=${listing.id}`);
+    };
+
+    const handleCloseIPO = async (listing: IPOListing) => {
+        if (!confirm(`Are you sure you want to close the IPO for "${listing.companyName}"?`)) {
+            return;
+        }
+
+        try {
+            await ipoApi.closeListing(listing.id);
+            toast.success('IPO closed successfully');
+            dispatch(fetchListings());
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Failed to close IPO');
+        }
+    };
+
+    const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'info' | 'neutral' => {
         switch (status) {
-            case 'upcoming': return 'bg-blue-100 text-blue-700';
-            case 'open': return 'bg-green-100 text-green-700';
-            case 'closed': return 'bg-slate-100 text-slate-700';
-            default: return 'bg-slate-100 text-slate-700';
+            case 'open': return 'success';
+            case 'upcoming': return 'info';
+            case 'closed': return 'neutral';
+            default: return 'neutral';
         }
     };
 
     return (
-        <div className="p-6">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">IPO Management</h1>
-                    <p className="text-slate-600">Manage IPO listings and applications</p>
-                </div>
-                <Button onClick={handleCreate}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create IPO Listing
-                </Button>
-            </div>
+        <div className="min-h-screen bg-gray-50 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <PageHeader
+                    title="IPO Management"
+                    actions={
+                        <ActionButton onClick={handleCreate} icon={<Plus className="w-4 h-4" />}>
+                            Create IPO Listing
+                        </ActionButton>
+                    }
+                />
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-lg shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <TrendingUp className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-600">Total IPOs</p>
-                            <p className="text-2xl font-bold text-slate-900">{listings.length}</p>
-                        </div>
+                {/* Filters */}
+                <Card className="mb-6" padding="sm">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 font-medium">Filter:</span>
+                        {['all', 'upcoming', 'open', 'closed'].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === status
+                                        ? 'bg-blue-900 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                    }`}
+                            >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                        ))}
                     </div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                            <Calendar className="w-5 h-5 text-green-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-600">Open</p>
-                            <p className="text-2xl font-bold text-green-600">
-                                {listings.filter(l => l.status === 'open').length}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <DollarSign className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-600">Upcoming</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                                {listings.filter(l => l.status === 'upcoming').length}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-100 rounded-lg">
-                            <Calendar className="w-5 h-5 text-slate-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-600">Closed</p>
-                            <p className="text-2xl font-bold text-slate-600">
-                                {listings.filter(l => l.status === 'closed').length}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </Card>
 
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-lg shadow mb-6">
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setStatusFilter('all')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'all'
-                                ? 'bg-primary-500 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                    >
-                        All
-                    </button>
-                    <button
-                        onClick={() => setStatusFilter('upcoming')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'upcoming'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                    >
-                        Upcoming
-                    </button>
-                    <button
-                        onClick={() => setStatusFilter('open')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'open'
-                                ? 'bg-green-500 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                    >
-                        Open
-                    </button>
-                    <button
-                        onClick={() => setStatusFilter('closed')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'closed'
-                                ? 'bg-slate-500 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                    >
-                        Closed
-                    </button>
-                </div>
-            </div>
-
-            {/* IPO Listings Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+                {/* IPO Listings */}
                 {isLoading ? (
-                    <div className="p-8 text-center">
-                        <p className="text-slate-600">Loading IPO listings...</p>
-                    </div>
+                    <Card>
+                        <div className="text-center py-12 text-gray-500">Loading IPO listings...</div>
+                    </Card>
                 ) : filteredListings.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <p className="text-slate-600">No IPO listings found</p>
-                    </div>
+                    <Card>
+                        <div className="text-center py-12 text-gray-500">
+                            {statusFilter === 'all' ? 'No IPO listings found' : `No ${statusFilter} IPO listings found`}
+                        </div>
+                    </Card>
                 ) : (
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase">Company</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase">Price/Share</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase">Total Shares</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase">Open Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase">Close Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase">Status</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {filteredListings.map((listing) => (
-                                <tr key={listing.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-slate-900">{listing.companyName}</div>
-                                        {listing.description && (
-                                            <div className="text-sm text-slate-500 truncate max-w-xs">{listing.description}</div>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-900">NPR {listing.pricePerShare}</td>
-                                    <td className="px-6 py-4 text-slate-900">{listing.totalShares.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-slate-600 text-sm">
-                                        {new Date(listing.openDate).toLocaleDateString()}
-                                        {listing.openTime && <div className="text-xs text-slate-500">{listing.openTime}</div>}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600 text-sm">
-                                        {new Date(listing.closeDate).toLocaleDateString()}
-                                        {listing.closeTime && <div className="text-xs text-slate-500">{listing.closeTime}</div>}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(listing.status)}`}>
-                                            {listing.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        <Button
-                                            variant="outline"
+                    <div className="space-y-3">
+                        {filteredListings.map((listing) => (
+                            <Card key={listing.id} padding="none" className="hover:shadow-md transition-shadow">
+                                <div className="p-4 flex items-center justify-between">
+                                    {/* Left Section - Company Info */}
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h3 className="text-base font-semibold text-gray-900">
+                                                {listing.companyName}
+                                            </h3>
+                                            <Badge variant={getStatusBadgeVariant(listing.status)}>
+                                                {listing.status.toUpperCase()}
+                                            </Badge>
+                                            {listing.scripName && (
+                                                <Badge variant="neutral">
+                                                    {listing.scripName}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-6 text-sm text-gray-600">
+                                            <span>
+                                                <span className="font-medium">Open:</span> {formatDate(listing.openDate, 'MMM dd, yyyy')} {listing.openTime ? formatTime12Hour(listing.openTime) : ''}
+                                            </span>
+                                            <span>
+                                                <span className="font-medium">Close:</span> {formatDate(listing.closeDate, 'MMM dd, yyyy')} {listing.closeTime ? formatTime12Hour(listing.closeTime) : ''}
+                                            </span>
+                                            <span>
+                                                <span className="font-medium">Price:</span> NPR {listing.pricePerShare}
+                                            </span>
+                                            <span>
+                                                <span className="font-medium">Shares:</span> {listing.totalShares?.toLocaleString() || 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Section - Actions */}
+                                    <div className="flex items-center gap-2">
+                                        <ActionButton
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleViewApplications(listing)}
+                                            icon={<Users className="w-4 h-4" />}
+                                        >
+                                            Applications
+                                        </ActionButton>
+                                        <ActionButton
+                                            variant="ghost"
                                             size="sm"
                                             onClick={() => handleEdit(listing)}
+                                            icon={<Edit2 className="w-4 h-4" />}
                                         >
                                             Edit
-                                        </Button>
-                                        {listing.status === 'upcoming' && (
-                                            <Button
-                                                size="sm"
-                                                onClick={() => handleStatusChange(listing.id, 'open')}
-                                            >
-                                                Open
-                                            </Button>
-                                        )}
+                                        </ActionButton>
                                         {listing.status === 'open' && (
-                                            <Button
-                                                size="sm"
+                                            <ActionButton
                                                 variant="outline"
-                                                onClick={() => handleStatusChange(listing.id, 'closed')}
+                                                size="sm"
+                                                onClick={() => handleCloseIPO(listing)}
                                             >
-                                                Close
-                                            </Button>
+                                                Close IPO
+                                            </ActionButton>
                                         )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                        <ActionButton
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDelete(listing)}
+                                            icon={<Trash2 className="w-4 h-4" />}
+                                            className="text-red-600 hover:bg-red-50"
+                                        >
+                                        </ActionButton>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
                 )}
             </div>
 
             {/* Create/Edit Modal */}
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false);
-                    setSelectedListing(null);
-                }}
+                onClose={() => setIsModalOpen(false)}
                 title={selectedListing ? 'Edit IPO Listing' : 'Create IPO Listing'}
-                size="lg"
             >
                 <IPOListingForm
                     listing={selectedListing}

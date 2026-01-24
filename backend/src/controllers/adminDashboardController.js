@@ -178,10 +178,19 @@ export const getRecentActivity = async (req, res) => {
             attributes: ['id', 'customerId', 'fullName', 'email', 'kycStatus', 'createdAt']
         });
 
+        // Fix: Ensure timestamps are serialized correctly
+        const mapTimestamps = (items) => items.map(item => {
+            const data = item.toJSON();
+            if (!data.createdAt && (item.dataValues?.created_at || item['created_at'])) {
+                data.createdAt = item.dataValues?.created_at || item['created_at'];
+            }
+            return data;
+        });
+
         res.json({
-            recentTransactions,
-            recentApplications,
-            recentCustomers
+            recentTransactions: mapTimestamps(recentTransactions),
+            recentApplications: mapTimestamps(recentApplications),
+            recentCustomers: mapTimestamps(recentCustomers)
         });
 
     } catch (error) {

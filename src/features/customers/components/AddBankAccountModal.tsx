@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,7 @@ import { Input } from '../../../components/common/Input';
 import { Select } from '../../../components/common/Select';
 import { useAppDispatch } from '../../../app/hooks';
 import { addBankAccount } from '../customerSlice';
+import { bankConfigApi, type BankConfiguration } from '../../../api/bankConfigApi';
 
 const bankAccountSchema = z.object({
     accountNumber: z.string().min(1, 'Account number is required'),
@@ -28,6 +29,9 @@ interface AddBankAccountModalProps {
 
 export const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ isOpen, onClose, customerId }) => {
     const dispatch = useAppDispatch();
+    const [banks, setBanks] = useState<BankConfiguration[]>([]);
+    const [isLoadingBanks, setIsLoadingBanks] = useState(true);
+
     const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<BankAccountFormData>({
         resolver: zodResolver(bankAccountSchema),
         defaultValues: {
@@ -35,6 +39,25 @@ export const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ isOpen
             status: 'active',
         },
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            loadBanks();
+        }
+    }, [isOpen]);
+
+    const loadBanks = async () => {
+        try {
+            setIsLoadingBanks(true);
+            const data = await bankConfigApi.getAllBanks();
+            // Filter only active banks
+            setBanks(data.filter(b => b.isActive));
+        } catch (error) {
+            console.error('Failed to load banks:', error);
+        } finally {
+            setIsLoadingBanks(false);
+        }
+    };
 
     const onSubmit = async (data: BankAccountFormData) => {
         try {
@@ -65,10 +88,18 @@ export const AddBankAccountModal: React.FC<AddBankAccountModalProps> = ({ isOpen
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                    <Input
+                    <Select
                         label="Bank Name"
                         {...register('bankName')}
                         error={errors.bankName?.message}
+                        options={[
+                            { value: '', label: 'Select a bank...' },
+                            ...banks.map(bank => ({
+                                value: bank.bankName,
+                                label: bank.bankName
+                            }))
+                        ]}
+                        disabled={isLoadingBanks}
                     />
 
                     <Input

@@ -70,6 +70,11 @@ const Account = sequelize.define('Account', {
         defaultValue: 0.00,
         field: 'blocked_amount'
     },
+    heldBalance: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0.00,
+        field: 'held_balance'
+    },
     isPrimary: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
@@ -93,7 +98,9 @@ const Account = sequelize.define('Account', {
     availableBalance: {
         type: DataTypes.VIRTUAL,
         get() {
-            return parseFloat(this.balance || 0) - parseFloat(this.blockedAmount || 0);
+            const balance = parseFloat(this.balance || 0);
+            const held = parseFloat(this.heldBalance || 0);
+            return balance - held;
         }
     }
 }, {

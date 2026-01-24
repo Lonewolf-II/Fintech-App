@@ -2,25 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Download, Printer } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Button } from './Button';
-
-interface Transaction {
-    id: number;
-    transactionId: string;
-    transactionType: string;
-    amount: number;
-    balanceAfter: number;
-    description: string;
-    createdAt: string;
-}
-
-interface Account {
-    id: number;
-    accountNumber: string;
-    accountName?: string;
-    shortName?: string;
-    balance: number;
-    blockedAmount: number;
-}
+import type { Account, Transaction } from '../../types/business.types';
 
 interface AccountStatementViewerProps {
     account: Account;
@@ -41,11 +23,16 @@ export const AccountStatementViewer: React.FC<AccountStatementViewerProps> = ({
     useEffect(() => {
         let filtered = [...transactions];
 
+        // Debug: Log first transaction to see structure
+        if (transactions.length > 0) {
+            console.log('First transaction:', transactions[0]);
+        }
+
         if (dateFrom) {
-            filtered = filtered.filter(t => new Date(t.createdAt) >= new Date(dateFrom));
+            filtered = filtered.filter(t => t.createdAt && new Date(t.createdAt) >= new Date(dateFrom));
         }
         if (dateTo) {
-            filtered = filtered.filter(t => new Date(t.createdAt) <= new Date(dateTo));
+            filtered = filtered.filter(t => t.createdAt && new Date(t.createdAt) <= new Date(dateTo));
         }
         if (typeFilter !== 'all') {
             filtered = filtered.filter(t => t.transactionType === typeFilter);
@@ -110,7 +97,11 @@ export const AccountStatementViewer: React.FC<AccountStatementViewerProps> = ({
                     </div>
 
                     {/* Account Info */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div>
+                            <p className="text-xs text-slate-500">Bank Name</p>
+                            <p className="font-semibold text-slate-900">{account.bankName || 'N/A'}</p>
+                        </div>
                         <div>
                             <p className="text-xs text-slate-500">Account Name</p>
                             <p className="font-semibold text-slate-900">{account.accountName || 'N/A'}</p>
@@ -208,7 +199,7 @@ export const AccountStatementViewer: React.FC<AccountStatementViewerProps> = ({
                                     return (
                                         <tr key={transaction.id} className="hover:bg-slate-50">
                                             <td className="px-4 py-3 text-sm text-slate-900">
-                                                {formatDate(transaction.createdAt)}
+                                                {formatDate(transaction.createdAt || (transaction as any).created_at)}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-slate-600 font-mono">
                                                 {transaction.transactionId}

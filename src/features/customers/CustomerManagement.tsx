@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { fetchCustomers, deleteCustomer } from './customerSlice';
+import { openStatementViewer, closeStatementViewer, fetchTransactions } from '../banking/bankingSlice';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { CustomerForm } from './components/CustomerForm';
@@ -9,23 +10,17 @@ import { BulkUploadModal } from './components/BulkUploadModal';
 import { AccountStatementViewer } from '../../components/common/AccountStatementViewer';
 import { UserPlus, Search, Upload } from 'lucide-react';
 import type { Customer } from '../../types/business.types';
-import { bankingApi } from '../../api/bankingApi';
 import toast from 'react-hot-toast';
 
 export const CustomerManagement: React.FC = () => {
     const dispatch = useAppDispatch();
     const { customers, isLoading } = useAppSelector((state) => state.customers);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [kycFilter, setKycFilter] = useState<string>('all');
-
-    // Statement viewer state
-    const [showStatements, setShowStatements] = useState(false);
-    const [statementAccount, setStatementAccount] = useState<any>(null);
-    const [transactions, setTransactions] = useState<any[]>([]);
-    const [loadingTransactions, setLoadingTransactions] = useState(false);
+    const { statementViewer, transactions } = useAppSelector((state) => state.banking);
+    const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [isBulkModalOpen, setIsBulkModalOpen] = React.useState(false);
+    const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [kycFilter, setKycFilter] = React.useState<string>('all');
 
     useEffect(() => {
         dispatch(fetchCustomers());
@@ -60,7 +55,7 @@ export const CustomerManagement: React.FC = () => {
         setSelectedCustomer(null);
     };
 
-    const handleViewStatements = async (customer: Customer) => {
+    const handleViewStatements = (customer: Customer) => {
         const primaryAccount = customer.accounts?.find(acc => acc.isPrimary) || customer.accounts?.[0];
 
         if (!primaryAccount) {
@@ -68,19 +63,14 @@ export const CustomerManagement: React.FC = () => {
             return;
         }
 
-        setStatementAccount(primaryAccount);
-        setShowStatements(true);
-        setLoadingTransactions(true);
-
-        try {
-            const response = await bankingApi.getAccountTransactions(primaryAccount.id);
-            setTransactions(response || []);
-        } catch (error: any) {
-            toast.error('Failed to load transactions');
-            setTransactions([]);
-        } finally {
-            setLoadingTransactions(false);
+        if (!primaryAccount.id) {
+            toast.error('Account ID is missing');
+            console.error('Account object:', primaryAccount);
+            return;
         }
+
+        dispatch(openStatementViewer(primaryAccount));
+        dispatch(fetchTransactions({ accountId: primaryAccount.id.toString() }));
     };
 
     return (
@@ -198,8 +188,8 @@ export const CustomerManagement: React.FC = () => {
             </Modal>
 
             {/* Account Statement Viewer */}
-            {showStatements && statementAccount && (
-                loadingTransactions ? (
+            {statementViewer.isOpen && statementViewer.account && (
+                statementViewer.isLoadingTransactions ? (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div className="bg-white p-8 rounded-lg">
                             <p className="text-slate-600">Loading transactions...</p>
@@ -207,13 +197,9 @@ export const CustomerManagement: React.FC = () => {
                     </div>
                 ) : (
                     <AccountStatementViewer
-                        account={statementAccount}
+                        account={statementViewer.account}
                         transactions={transactions}
-                        onClose={() => {
-                            setShowStatements(false);
-                            setStatementAccount(null);
-                            setTransactions([]);
-                        }}
+                        onClose={() => dispatch(closeStatementViewer())}
                     />
                 )
             )}

@@ -5,6 +5,8 @@ import { fetchCustomer, updateIPOApplication, deleteIPOApplication } from './cus
 import { IPOApplicationForm } from './components/IPOApplicationForm';
 import { CustomerForm } from './components/CustomerForm';
 import { DematFamilyForm } from './components/DematFamilyForm';
+import { EditIPOApplicationModal } from './components/EditIPOApplicationModal';
+import { Card, Badge, ActionButton } from '../../components/ui';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { User, Shield, Plus, Key, Lock, Edit, Trash2 } from 'lucide-react';
 import { AddBankAccountModal } from './components/AddBankAccountModal';
@@ -27,6 +29,11 @@ export const CustomerProfile: React.FC = () => {
     const { selectedCustomer, isLoading, error } = useAppSelector((state) => state.customers);
     const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'portfolio' | 'credentials'>('overview');
     const [portfolioSubTab, setPortfolioSubTab] = useState<'holdings' | 'apply' | 'applications' | 'details'>('holdings');
+
+    // Edit IPO Application Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingApplication, setEditingApplication] = useState<any | null>(null);
+
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCredentialModalOpen, setIsAddCredentialModalOpen] = useState(false);
     const [isEditAccountModalOpen, setIsEditAccountModalOpen] = useState(false);
@@ -342,107 +349,123 @@ export const CustomerProfile: React.FC = () => {
 
                             {/* IPO Applications Tab */}
                             {portfolioSubTab === 'applications' && (
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-slate-900 mb-4">IPO Applications</h3>
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-slate-200">
-                                            <thead className="bg-slate-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qty</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
-                                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-slate-200">
-                                                {ipoApplications.map((app) => {
-                                                    const pendingRequest = selectedCustomer.pendingRequests?.find(
-                                                        r => r.targetModel === 'IPOApplication' && r.targetId === String(app.id) && r.status === 'pending'
-                                                    );
-                                                    const isPending = !!pendingRequest;
-
-                                                    return (
-                                                        <tr key={app.id} className={isPending ? "bg-yellow-50" : ""}>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                                                {app.companyName}
-                                                                {isPending && (
-                                                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                                        {pendingRequest?.changeType === 'delete' ? 'Deletion Pending' : 'Update Pending'}
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{app.quantity}</td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(Number(app.totalAmount))}</td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${app.status === 'verified' ? 'bg-green-100 text-green-800' :
-                                                                    app.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                                        app.status === 'allotted' ? 'bg-blue-100 text-blue-800' :
-                                                                            'bg-yellow-100 text-yellow-800'
-                                                                    }`}>
-                                                                    {app.status}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                                                {formatDateTime(app.createdAt)}
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                                <div className="flex justify-end gap-2">
-                                                                    <button
-                                                                        disabled={isPending}
-                                                                        onClick={() => {
-                                                                            const newQty = prompt("Enter new quantity:", String(app.quantity));
-                                                                            if (newQty && !isNaN(Number(newQty))) {
-                                                                                dispatch(updateIPOApplication({
-                                                                                    id: String(app.id),
-                                                                                    data: { quantity: Number(newQty), totalAmount: Number(newQty) * Number(app.pricePerShare) }
-                                                                                }))
-                                                                                    .unwrap()
-                                                                                    .then((res) => {
-                                                                                        if (res.pending) toast.success("Modification Request Sent");
-                                                                                        else toast.success("Updated Successfully");
-                                                                                        dispatch(fetchCustomer(selectedCustomer.id));
-                                                                                    })
-                                                                                    .catch(err => toast.error(err));
-                                                                            }
-                                                                        }}
-                                                                        className={`text-blue-600 hover:text-blue-900 ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                    >
-                                                                        <Edit className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button
-                                                                        disabled={isPending}
-                                                                        onClick={() => {
-                                                                            if (confirm("Are you sure you want to delete this application?")) {
-                                                                                dispatch(deleteIPOApplication(String(app.id)))
-                                                                                    .unwrap()
-                                                                                    .then((res) => {
-                                                                                        if (res.pending) toast.success("Deletion Request Sent");
-                                                                                        else toast.success("Deleted Successfully");
-                                                                                        dispatch(fetchCustomer(selectedCustomer.id));
-                                                                                    })
-                                                                                    .catch(err => toast.error(err));
-                                                                            }
-                                                                        }}
-                                                                        className={`text-red-600 hover:text-red-900 ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                                {ipoApplications.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={6} className="px-6 py-4 text-center text-slate-500">No applications yet</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
+                                <div className="p-6 space-y-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg font-semibold text-slate-900">IPO Applications</h3>
                                     </div>
+
+                                    {ipoApplications.length === 0 ? (
+                                        <Card>
+                                            <div className="text-center py-8 text-gray-500">No applications found</div>
+                                        </Card>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {ipoApplications.map((app) => {
+                                                const pendingRequest = selectedCustomer.pendingRequests?.find(
+                                                    r => r.targetModel === 'IPOApplication' && r.targetId === String(app.id) && r.status === 'pending'
+                                                );
+                                                const isPending = !!pendingRequest;
+
+                                                // Status badge variant helper
+                                                const getStatusVariant = (status: string) => {
+                                                    switch (status) {
+                                                        case 'verified': return 'success';
+                                                        case 'allotted': return 'success';
+                                                        case 'rejected': return 'error';
+                                                        case 'pending': return 'warning';
+                                                        default: return 'neutral';
+                                                    }
+                                                };
+
+                                                return (
+                                                    <Card key={app.id} padding="none" className={isPending ? "border-yellow-200 bg-yellow-50/30" : ""}>
+                                                        <div className="p-4 flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-1">
+                                                                    <h4 className="font-semibold text-gray-900">{app.companyName}</h4>
+                                                                    <Badge variant={getStatusVariant(app.status)}>
+                                                                        {app.status.toUpperCase()}
+                                                                    </Badge>
+                                                                    {isPending && (
+                                                                        <Badge variant="warning">
+                                                                            {pendingRequest?.changeType === 'delete' ? 'Deletion Pending' : 'Update Pending'}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-6 text-sm text-gray-600 mt-2">
+                                                                    <div>
+                                                                        <span className="text-gray-500 mr-1">Date:</span>
+                                                                        <span className="font-medium text-gray-900">
+                                                                            {app.createdAt ? formatDateTime(app.createdAt) : '-'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 mr-1">Qty:</span>
+                                                                        <span className="font-medium text-gray-900">{app.quantity}</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 mr-1">Amount:</span>
+                                                                        <span className="font-medium text-gray-900">{formatCurrency(Number(app.totalAmount))}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <ActionButton
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={isPending}
+                                                                    onClick={() => {
+                                                                        setEditingApplication(app);
+                                                                        setIsEditModalOpen(true);
+                                                                    }}
+                                                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                                >
+                                                                    <Edit className="w-4 h-4" />
+                                                                </ActionButton>
+                                                                <ActionButton
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={isPending}
+                                                                    onClick={() => {
+                                                                        if (confirm("Are you sure you want to delete this application?")) {
+                                                                            dispatch(deleteIPOApplication(String(app.id)))
+                                                                                .unwrap()
+                                                                                .then((res) => {
+                                                                                    if (res.pending) toast.success("Deletion Request Sent");
+                                                                                    else toast.success("Deleted Successfully");
+                                                                                    dispatch(fetchCustomer(selectedCustomer.id));
+                                                                                })
+                                                                                .catch(err => toast.error(err));
+                                                                        }
+                                                                    }}
+                                                                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </ActionButton>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
+                            )}
+
+                            {/* Edit Modal */}
+                            {editingApplication && (
+                                <EditIPOApplicationModal
+                                    isOpen={isEditModalOpen}
+                                    onClose={() => {
+                                        setIsEditModalOpen(false);
+                                        setEditingApplication(null);
+                                    }}
+                                    application={editingApplication}
+                                    customerId={String(selectedCustomer.id)}
+                                    accounts={accounts} // Pass accounts to modal
+                                    onSuccess={() => dispatch(fetchCustomer(selectedCustomer.id))}
+                                />
                             )}
 
                             {/* My Details Tab (Existing Demat & Family Details) */}

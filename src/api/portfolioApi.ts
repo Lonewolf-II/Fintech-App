@@ -44,4 +44,14 @@ export const portfolioApi = {
         const response = await apiClient.delete(`/portfolio/holdings/${id}`);
         return response.data;
     },
+
+    updateMarketPrice: async (stockSymbol: string, currentPrice: number): Promise<any> => {
+        const response = await apiClient.post('/portfolio/market-price', { stockSymbol, currentPrice });
+        return response.data;
+    },
+
+    sellShares: async (id: string, data: { quantity: number; salePrice: number }): Promise<any> => {
+        const response = await apiClient.post(`/portfolio/holdings/${id}/sell`, data);
+        return response.data;
+    },
 };

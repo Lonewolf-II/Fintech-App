@@ -59,6 +59,21 @@ const Holding = sequelize.define('Holding', {
         type: DataTypes.DECIMAL(5, 2),
         field: 'profit_loss_percent'
     },
+    totalProfit: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0.00,
+        field: 'total_profit'
+    },
+    totalSoldQuantity: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        field: 'total_sold_quantity'
+    },
+    averageSalePrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00,
+        field: 'average_sale_price'
+    },
     purchaseDate: {
         type: DataTypes.DATEONLY,
         defaultValue: DataTypes.NOW,

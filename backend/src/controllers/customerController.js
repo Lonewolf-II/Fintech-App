@@ -1,4 +1,4 @@
-import { Customer, Account, CustomerCredential, ModificationRequest, sequelize } from '../models/index.js';
+import { Customer, Account, CustomerCredential, ModificationRequest, IPOApplication, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 import fs from 'fs';
 import csv from 'csv-parser';
@@ -39,7 +39,7 @@ export const getAllCustomers = async (req, res) => {
                 { association: 'verifier', attributes: ['name'] },
                 {
                     association: 'accounts',
-                    attributes: ['accountNumber', 'accountName', 'balance', 'isPrimary', 'accountType'] // Fetch necessary fields
+                    attributes: ['id', 'accountNumber', 'accountName', 'balance', 'isPrimary', 'accountType', 'blockedAmount'] // Include id and blockedAmount
                 }
             ], // Include accounts
             order: [['created_at', 'DESC']]
@@ -59,18 +59,34 @@ export const getCustomerById = async (req, res) => {
                 { association: 'creator', attributes: ['name'] },
                 { association: 'verifier', attributes: ['name'] },
                 { association: 'accounts' },
-                { association: 'ipoApplications' },
+                {
+                    association: 'ipoApplications',
+                    // attributes: ['id', 'companyName', 'quantity', 'totalAmount', 'status', 'createdAt', 'pricePerShare', 'accountId'], // Ensure all needed fields
+                    // Actually, let's just leave it to default to fetch all fields to be safe
+                },
                 {
                     association: 'portfolios',
                     include: [{ association: 'holdings' }]
                 },
                 { association: 'credentials' }
+            ],
+            order: [
+                ['created_at', 'DESC'], // Customer creation
+                [{ model: IPOApplication, as: 'ipoApplications' }, 'created_at', 'DESC'] // Order apps by date
             ]
         });
 
         if (!customer) {
             return res.status(404).json({ error: 'Customer not found' });
         }
+
+        // Convert to plain object to ensure all fields including timestamps are serialized
+        const customerData = customer.toJSON();
+        console.log('Customer IPO Applications:', customerData.ipoApplications?.map(app => ({
+            id: app.id,
+            createdAt: app.createdAt,
+            updatedAt: app.updatedAt
+        })));
 
         // Fetch pending modification requests
         const accountIds = (customer.accounts || []).map(a => a.id);
@@ -80,7 +96,7 @@ export const getCustomerById = async (req, res) => {
         if (customer.portfolios) {
             customer.portfolios.forEach(p => {
                 if (p.holdings) {
-                    holdingIds = [...holdingIds, ...p.holdings.map(h => h.id)];
+                    holdingIds.push(...p.holdings.map(h => h.id));
                 }
             });
         }
@@ -89,18 +105,48 @@ export const getCustomerById = async (req, res) => {
             where: {
                 status: 'pending',
                 [Op.or]: [
-                    { targetModel: 'Customer', targetId: customer.id },
+                    { targetModel: 'Customer', targetId: req.params.id },
                     { targetModel: 'Account', targetId: { [Op.in]: accountIds } },
+                    { targetModel: 'Portfolio', targetId: { [Op.in]: portfolioIds } },
                     { targetModel: 'IPOApplication', targetId: { [Op.in]: ipoIds } },
                     { targetModel: 'Holding', targetId: { [Op.in]: holdingIds } }
                 ]
             }
         });
 
-        const customerData = customer.toJSON();
         customerData.pendingRequests = pendingRequests;
 
-        res.json(customerData);
+        const ipoApplications = customerData.ipoApplications?.map(app => {
+            const result = { ...app };
+            // Fix: Fallback to snake_case created_at if createdAt is missing
+            if (!result.createdAt && (app['created_at'] || app.dataValues?.created_at)) {
+                result.createdAt = app['created_at'] || app.dataValues?.created_at;
+            }
+            return result;
+        });
+
+        const accounts = customerData.accounts?.map(acc => {
+            // Also normalize accounts just in case
+            const result = { ...acc };
+            if (!result.createdAt && (acc['created_at'] || acc.dataValues?.created_at)) {
+                result.createdAt = acc['created_at'] || acc.dataValues?.created_at;
+            }
+            return result;
+        });
+
+        // Debug log (can remove later)
+        console.log('Customer IPO Applications with timestamps:', ipoApplications?.map(app => ({
+            id: app.id,
+            companyName: app.companyName,
+            createdAt: app.createdAt,
+            updatedAt: app.updatedAt
+        })));
+
+        res.json({
+            ...customerData,
+            ipoApplications,
+            accounts
+        });
     } catch (error) {
         console.error('Get customer error:', error);
         res.status(500).json({ error: 'Failed to fetch customer' });

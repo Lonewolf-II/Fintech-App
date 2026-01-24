@@ -68,7 +68,30 @@ export const updateListingStatus = createAsyncThunk(
     }
 );
 
+export const updateListing = createAsyncThunk(
+    'ipo/updateListing',
+    async ({ id, data }: { id: number; data: Partial<IPOListing> }, { rejectWithValue }) => {
+        try {
+            return await ipoApi.updateListing(id, data);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to update IPO listing');
+        }
+    }
+);
+
 // Async thunks for IPO Applications
+export const deleteListing = createAsyncThunk(
+    'ipo/deleteListing',
+    async (id: number, { rejectWithValue }) => {
+        try {
+            await ipoApi.deleteListing(id);
+            return id;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.error || 'Failed to delete IPO listing');
+        }
+    }
+);
+
 export const fetchApplications = createAsyncThunk(
     'ipo/fetchApplications',
     async (customerId: string | undefined = undefined, { rejectWithValue }) => {
@@ -212,6 +235,22 @@ const ipoSlice = createSlice({
                     state.listings[index] = action.payload as any;
                 }
             })
+            // Update Full Listing
+            .addCase(updateListing.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(updateListing.fulfilled, (state, action) => {
+                state.isLoading = false;
+                const index = state.listings.findIndex(l => l.id === action.payload.id);
+                if (index !== -1) {
+                    state.listings[index] = action.payload as any;
+                }
+            })
+            .addCase(updateListing.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
             // Fetch applications
             .addCase(fetchApplications.pending, (state) => {
                 state.isLoading = true;
@@ -262,6 +301,10 @@ const ipoSlice = createSlice({
             // Delete application
             .addCase(deleteApplication.fulfilled, (state, action) => {
                 state.applications = state.applications.filter(a => Number(a.id) !== action.payload);
+            })
+            // Delete Listing
+            .addCase(deleteListing.fulfilled, (state, action) => {
+                state.listings = state.listings.filter(l => l.id !== action.payload);
             })
             // Fetch stats
             .addCase(fetchIPOStats.fulfilled, (state, action) => {

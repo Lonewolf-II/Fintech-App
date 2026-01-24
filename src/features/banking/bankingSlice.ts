@@ -11,6 +11,11 @@ interface BankingState {
         currentPage: number;
     };
     selectedAccount: Account | null;
+    statementViewer: {
+        isOpen: boolean;
+        account: Account | null;
+        isLoadingTransactions: boolean;
+    };
     isLoading: boolean;
     error: string | null;
 }
@@ -24,6 +29,11 @@ const initialState: BankingState = {
         currentPage: 1
     },
     selectedAccount: null,
+    statementViewer: {
+        isOpen: false,
+        account: null,
+        isLoadingTransactions: false,
+    },
     isLoading: false,
     error: null,
 };
@@ -94,6 +104,22 @@ const bankingSlice = createSlice({
         clearError: (state) => {
             state.error = null;
         },
+        openStatementViewer: (state, action: PayloadAction<Account>) => {
+            state.statementViewer.isOpen = true;
+            state.statementViewer.account = action.payload;
+            state.statementViewer.isLoadingTransactions = true;
+        },
+        closeStatementViewer: (state) => {
+            state.statementViewer.isOpen = false;
+            state.statementViewer.account = null;
+            state.statementViewer.isLoadingTransactions = false;
+            state.transactions = [];
+            state.transactionPagination = {
+                total: 0,
+                totalPages: 0,
+                currentPage: 1
+            };
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -111,6 +137,9 @@ const bankingSlice = createSlice({
             .addCase(createAccount.fulfilled, (state, action) => {
                 state.accounts.unshift(action.payload);
             })
+            .addCase(fetchTransactions.pending, (state) => {
+                state.statementViewer.isLoadingTransactions = true;
+            })
             .addCase(fetchTransactions.fulfilled, (state, action) => {
                 const payload = action.payload as any;
                 // Handle both old (array) and new (paginated) response formats for backward compatibility
@@ -125,6 +154,10 @@ const bankingSlice = createSlice({
                         currentPage: payload.currentPage
                     };
                 }
+                state.statementViewer.isLoadingTransactions = false;
+            })
+            .addCase(fetchTransactions.rejected, (state) => {
+                state.statementViewer.isLoadingTransactions = false;
             })
             .addCase(createTransaction.fulfilled, (state, action) => {
                 // We might want to re-fetch to get latest state, but pushing for now is okay
@@ -147,5 +180,5 @@ const bankingSlice = createSlice({
     },
 });
 
-export const { setSelectedAccount, clearError } = bankingSlice.actions;
+export const { setSelectedAccount, clearError, openStatementViewer, closeStatementViewer } = bankingSlice.actions;
 export default bankingSlice.reducer;

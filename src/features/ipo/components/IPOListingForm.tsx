@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch } from '../../../app/hooks';
-import { createListing, updateListingStatus } from '../ipoSlice';
+import { createListing, updateListing } from '../ipoSlice';
 import { Button } from '../../../components/common/Button';
-import { ipoApi } from '../../../api/ipoApi'; // We might need direct API calls or additional thunks for full update if not covered
 import type { IPOListing } from '../../../types/business.types';
 
 interface IPOListingFormProps {
@@ -15,6 +14,7 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
     const dispatch = useAppDispatch();
     const [formData, setFormData] = useState({
         companyName: '',
+        scripName: '',
         pricePerShare: '',
         totalShares: '',
         openDate: '',
@@ -23,6 +23,8 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
         closeTime: '',
         allotmentDate: '',
         allotmentTime: '',
+        resultPublishDate: '',
+        resultPublishTime: '',
         status: 'upcoming',
         description: '',
     });
@@ -33,14 +35,17 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
         if (listing) {
             setFormData({
                 companyName: listing.companyName,
+                scripName: (listing as any).scripName || '',
                 pricePerShare: listing.pricePerShare.toString(),
                 totalShares: listing.totalShares.toString(),
-                openDate: listing.openDate.split('T')[0],
-                closeDate: listing.closeDate.split('T')[0],
+                openDate: listing.openDate ? listing.openDate.split('T')[0] : '',
+                closeDate: listing.closeDate ? listing.closeDate.split('T')[0] : '',
                 openTime: listing.openTime || '',
                 closeTime: listing.closeTime || '',
                 allotmentDate: listing.allotmentDate ? listing.allotmentDate.split('T')[0] : '',
                 allotmentTime: listing.allotmentTime || '',
+                resultPublishDate: (listing as any).resultPublishDate ? (listing as any).resultPublishDate.split('T')[0] : '',
+                resultPublishTime: (listing as any).resultPublishTime || '',
                 status: listing.status,
                 description: listing.description || '',
             });
@@ -49,7 +54,23 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const newData = { ...prev, [name]: value };
+
+            // Auto-update status based on dates if dates change
+            if (['openDate', 'closeDate'].includes(name) && newData.openDate && newData.closeDate) {
+                const today = new Date().toISOString().split('T')[0];
+                if (today < newData.openDate) {
+                    newData.status = 'upcoming';
+                } else if (today >= newData.openDate && today <= newData.closeDate) {
+                    newData.status = 'open';
+                } else if (today > newData.closeDate) {
+                    newData.status = 'closed';
+                }
+            }
+
+            return newData;
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -62,11 +83,17 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                 ...formData,
                 pricePerShare: parseFloat(formData.pricePerShare),
                 totalShares: parseInt(formData.totalShares),
+                openTime: formData.openTime || null,
+                closeTime: formData.closeTime || null,
+                allotmentDate: formData.allotmentDate || null,
+                allotmentTime: formData.allotmentTime || null,
+                resultPublishDate: formData.resultPublishDate || null,
+                resultPublishTime: formData.resultPublishTime || null,
             };
 
             // Basic validation
-            if (!data.companyName || !data.openDate || !data.closeDate) {
-                setError('Company name, open date and close date are required');
+            if (!data.companyName || !data.openDate) {
+                setError('Company name and open date are required');
                 setIsLoading(false);
                 return;
             }
@@ -87,8 +114,7 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                 // Real implementation: Let's assume we can't fully edit details of active IPOs easily without that endpoint.
                 // I'll stick to Create logic. If listing exists, I'll display a message.
                 if (listing.id) {
-                    // TODO: Add full update endpoint to backend/slice
-                    // For now, just close modal
+                    await dispatch(updateListing({ id: listing.id, data: data as any })).unwrap();
                     onSuccess();
                 }
             } else {
@@ -100,6 +126,15 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const formatTime12Hour = (time24: string) => {
+        if (!time24) return '';
+        const [hours, minutes] = time24.split(':');
+        const h = parseInt(hours, 10);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${minutes} ${ampm}`;
     };
 
     return (
@@ -123,6 +158,22 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                     />
                 </div>
                 <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Scrip Name *</label>
+                    <input
+                        type="text"
+                        name="scripName"
+                        value={formData.scripName}
+                        onChange={handleChange}
+                        placeholder="e.g., HBL, NBL"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        required
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Stock symbol/ticker for this IPO</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                     <select
                         name="status"
@@ -133,8 +184,10 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                         <option value="upcoming">Upcoming</option>
                         <option value="open">Open</option>
                         <option value="closed">Closed</option>
+                        <option value="result_published">Result Published</option>
                     </select>
                 </div>
+                <div></div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -180,7 +233,9 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Open Time</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Open Time {formData.openTime && <span className="text-primary-600 font-bold ml-2">({formatTime12Hour(formData.openTime)})</span>}
+                    </label>
                     <input
                         type="time"
                         name="openTime"
@@ -200,11 +255,12 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                         value={formData.closeDate}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                        required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Close Time</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Close Time {formData.closeTime && <span className="text-primary-600 font-bold ml-2">({formatTime12Hour(formData.closeTime)})</span>}
+                    </label>
                     <input
                         type="time"
                         name="closeTime"
@@ -227,11 +283,38 @@ export const IPOListingForm: React.FC<IPOListingFormProps> = ({ listing, onSucce
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Allotment Time</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Allotment Time {formData.allotmentTime && <span className="text-primary-600 font-bold ml-2">({formatTime12Hour(formData.allotmentTime)})</span>}
+                    </label>
                     <input
                         type="time"
                         name="allotmentTime"
                         value={formData.allotmentTime}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Result Publish Date</label>
+                    <input
+                        type="date"
+                        name="resultPublishDate"
+                        value={formData.resultPublishDate}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Result Publish Time {formData.resultPublishTime && <span className="text-primary-600 font-bold ml-2">({formatTime12Hour(formData.resultPublishTime)})</span>}
+                    </label>
+                    <input
+                        type="time"
+                        name="resultPublishTime"
+                        value={formData.resultPublishTime}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     />

@@ -9,7 +9,11 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AdminDashboard } from './features/admin/AdminDashboard';
 import { UserManagement } from './features/admin/UserManagement';
 import { IPOManagement } from './features/admin/IPOManagement';
+import { IPOAllotmentPage } from './features/ipo/IPOAllotmentPage';
+import { IPOApplications as AdminIPOApplications } from './features/admin/IPOApplications';
 import { ActivityLogs } from './features/admin/ActivityLogs';
+import { BankConfigurationPage } from './features/admin/BankConfiguration';
+import { ChargeAccounts } from './features/admin/ChargeAccounts';
 import { BulkIPO } from './features/maker/BulkIPO';
 import { CustomerManagement } from './features/customers/CustomerManagement';
 import { CustomerProfile } from './features/customers/CustomerProfile';
@@ -23,10 +27,12 @@ import { InvestorDashboard } from './features/investor/InvestorDashboard';
 import { PendingModifications } from './features/checker/PendingModifications';
 import { PendingVerification } from './features/checker/PendingVerification';
 import { PendingApprovals } from './features/checker/PendingApprovals';
-import { IPOApplications } from './features/checker/IPOApplications';
+import { IPOApplications as CheckerIPOApplications } from './features/checker/IPOApplications';
 import { InvestorManagement } from './features/investor/InvestorManagement';
 import { CategoryManagement } from './features/investor/CategoryManagement';
 import { InvestmentManagement } from './features/investor/InvestmentManagement';
+
+import { IPOApplications as MakerIPOApplications } from './features/maker/IPOApplications';
 
 // Root redirect component
 const RootRedirect: React.FC = () => {
@@ -68,12 +74,14 @@ function AppRoutes() {
                 <Route path="banking" element={<BankingDashboard />} />
                 <Route path="banking/statement/:accountId" element={<AccountStatementPage />} />
                 <Route path="portfolio" element={<PortfolioDashboard />} />
-                <Route path="ipo-applications" element={<div>IPO Applications List (Coming Soon)</div>} />
+                <Route path="ipo-applications" element={<AdminIPOApplications />} />
                 <Route path="ipo" element={<IPOManagement />} />
+                <Route path="ipo/:id/allotment" element={<IPOAllotmentPage />} />
                 <Route path="investors" element={<InvestorManagement />} />
                 <Route path="categories" element={<CategoryManagement />} />
                 <Route path="investments" element={<InvestmentManagement />} />
-                <Route path="settings" element={<div>Settings Page (Coming Soon)</div>} />
+                <Route path="settings/banks" element={<BankConfigurationPage />} />
+                <Route path="charges" element={<ChargeAccounts />} />
               </Routes>
             </DashboardLayout>
           </ProtectedRoute>
@@ -94,7 +102,7 @@ function AppRoutes() {
                 <Route path="banking/statement/:accountId" element={<AccountStatementPage />} />
                 <Route path="transactions" element={<TransactionOperations />} />
                 <Route path="portfolio" element={<PortfolioDashboard />} />
-                <Route path="ipo-applications" element={<div>IPO Applications List (Coming Soon)</div>} />
+                <Route path="ipo-applications" element={<MakerIPOApplications />} />
                 <Route path="ipo/apply" element={<div>Manual Application Entry (Coming Soon)</div>} />
                 <Route path="bulk-ipo" element={<BulkIPO />} />
                 <Route path="settings" element={<div>Settings Page (Coming Soon)</div>} />
@@ -116,7 +124,7 @@ function AppRoutes() {
                 <Route path="modifications" element={<PendingModifications />} />
                 <Route path="verification" element={<PendingVerification />} />
                 <Route path="approvals" element={<PendingApprovals />} />
-                <Route path="ipo-applications" element={<IPOApplications />} />
+                <Route path="ipo-applications" element={<CheckerIPOApplications />} />
                 <Route path="settings" element={<div>Settings Page (Coming Soon)</div>} />
               </Routes>
             </DashboardLayout>

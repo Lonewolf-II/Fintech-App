@@ -10,12 +10,16 @@ import {
     verifyIPO,
     bulkApplyIPO,
     updateIPOApplication,
-    deleteIPOApplication
+    deleteIPOApplication,
+    deleteIPOListing,
+    updateIPOListing,
+    processAllotment,
+    closeIPO
 } from '../controllers/ipoController.js';
 import {
-    allotIPOApplication,
     getIPOApplicationsEnhanced,
-    getIPOStats
+    getIPOStats,
+    allotIPOApplication
 } from '../controllers/ipoAllotmentController.js';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 
@@ -37,6 +41,15 @@ router.get('/listings/open', getOpenIPOListings);
 // Update IPO Status (Admin only)
 router.patch('/listings/:id/status', requireRole('admin'), updateIPOStatus);
 
+// Close IPO Listing (Admin only)
+router.post('/listings/:id/close', requireRole('admin'), closeIPO);
+
+// Update Full IPO Listing (Admin only)
+router.put('/listings/:id', requireRole('admin'), updateIPOListing);
+
+// Delete IPO Listing (Admin only)
+router.delete('/listings/:id', requireRole('admin'), deleteIPOListing);
+
 // -- IPO Application Routes --
 
 // Apply for IPO (Maker/Admin)
@@ -51,8 +64,8 @@ router.get('/applications', getIPOApplicationsEnhanced);
 // Verify IPO (Checker/Admin only)
 router.put('/applications/:id/verify', requireRole('checker', 'admin'), verifyIPO);
 
-// Allot IPO Application (Admin only)
-router.post('/applications/:id/allot', requireRole('admin'), allotIPOApplication);
+// Allot IPO Application (Admin/Maker only) - Updated to use Allotment Controller
+router.post('/applications/:id/allot', requireRole('admin', 'maker'), allotIPOApplication);
 
 // Update IPO Application (Maker/Admin)
 router.put('/applications/:id', requireRole('maker', 'admin'), updateIPOApplication);

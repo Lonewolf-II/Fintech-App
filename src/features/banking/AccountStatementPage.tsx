@@ -135,11 +135,12 @@ export const AccountStatementPage: React.FC = () => {
             doc.text('Customer Details', 14, 40);
             doc.setFontSize(10);
             doc.text(`Name: ${account.accountName || 'N/A'}`, 14, 46);
-            doc.text(`Account Number: ${account.accountNumber}`, 14, 52);
-            doc.text(`Current Balance: ${formatCurrency(account.balance)}`, 14, 58);
+            doc.text(`Bank: ${account.bankName || 'N/A'}`, 14, 52);
+            doc.text(`Account Number: ${account.accountNumber}`, 14, 58);
+            doc.text(`Current Balance: ${formatCurrency(account.balance)}`, 14, 64);
 
             if (filters.startDate || filters.endDate) {
-                doc.text(`Period: ${filters.startDate || 'Start'} to ${filters.endDate || 'Now'}`, 14, 64);
+                doc.text(`Period: ${filters.startDate || 'Start'} to ${filters.endDate || 'Now'}`, 14, 70);
             }
 
             // Table
@@ -163,7 +164,7 @@ export const AccountStatementPage: React.FC = () => {
             autoTable(doc, {
                 head: [tableColumn],
                 body: tableRows,
-                startY: 70,
+                startY: 76,
             });
 
             doc.save(`Statement_${account.accountNumber}.pdf`);
@@ -203,7 +204,11 @@ export const AccountStatementPage: React.FC = () => {
                     </div>
 
                     {/* Account Info */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-slate-50 rounded-lg">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase tracking-wider">Bank Name</p>
+                            <p className="font-semibold text-slate-900 mt-1">{account.bankName || 'N/A'}</p>
+                        </div>
                         <div>
                             <p className="text-xs text-slate-500 uppercase tracking-wider">Account Name</p>
                             <p className="font-semibold text-slate-900 mt-1">{account.accountName || 'N/A'}</p>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch } from '../../../app/hooks';
 import { applyIPO } from '../customerSlice';
-import { Button } from '../../../components/common/Button';
 import type { Account } from '../../../types/business.types';
 import { formatCurrency } from '../../../utils/formatters';
 import { ipoApi, type IPOListing } from '../../../api/ipoApi';
-import { Input } from '../../../components/common/Input';
+import { Card, ActionButton } from '../../../components/ui';
+import { Wallet } from 'lucide-react';
 
 interface IPOApplicationFormProps {
     customerId: string;
@@ -20,10 +20,19 @@ export const IPOApplicationForm: React.FC<IPOApplicationFormProps> = ({ customer
         companyName: '',
         quantity: '',
         pricePerShare: '',
-        accountId: accounts.find(a => a.isPrimary)?.id || accounts[0]?.id || ''
+        accountId: ''
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Set default account when accounts are loaded
+    useEffect(() => {
+        if (accounts.length > 0 && !formData.accountId) {
+            const primaryAccount = accounts.find(a => a.isPrimary);
+            const defaultId = primaryAccount ? primaryAccount.id.toString() : accounts[0].id.toString();
+            setFormData(prev => ({ ...prev, accountId: defaultId }));
+        }
+    }, [accounts]);
 
     useEffect(() => {
         const fetchOpenIPOs = async () => {
@@ -43,7 +52,7 @@ export const IPOApplicationForm: React.FC<IPOApplicationFormProps> = ({ customer
             setFormData(prev => ({
                 ...prev,
                 companyName: ipo.companyName,
-                pricePerShare: ipo.pricePerShare
+                pricePerShare: ipo.pricePerShare.toString()
             }));
         } else {
             setFormData(prev => ({ ...prev, companyName: '', pricePerShare: '' }));
@@ -63,9 +72,25 @@ export const IPOApplicationForm: React.FC<IPOApplicationFormProps> = ({ customer
             if (isNaN(price) || price <= 0) throw new Error('Invalid price');
             if (!formData.accountId) throw new Error('Please select an account');
 
+            // DEBUGGING: Explicitly show what is being sent
+            const accountToSend = parseInt(formData.accountId);
+            const accountDetails = accounts.find(a => a.id.toString() === formData.accountId);
+            const isConfirmed = window.confirm(
+                `DEBUG CHECK:\n\n` +
+                `Selected Account ID: ${accountToSend}\n` +
+                `Account Number: ${accountDetails?.accountNumber}\n` +
+                `Is Primary: ${accountDetails?.isPrimary}\n\n` +
+                `Click OK to proceed with this Account ID.`
+            );
+
+            if (!isConfirmed) {
+                setSubmitting(false);
+                return;
+            }
+
             const resultAction = await dispatch(applyIPO({
                 customerId: parseInt(customerId),
-                accountId: parseInt(formData.accountId),
+                accountId: accountToSend,
                 companyName: formData.companyName,
                 quantity,
                 pricePerShare: price
@@ -85,77 +110,114 @@ export const IPOApplicationForm: React.FC<IPOApplicationFormProps> = ({ customer
     };
 
     const totalAmount = (parseInt(formData.quantity) || 0) * (parseFloat(formData.pricePerShare) || 0);
+    const selectedAccount = accounts.find(a => a.id.toString() === formData.accountId);
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-slate-900 border-b pb-2">Apply for IPO</h3>
+        <Card className="max-w-2xl mx-auto">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Apply for IPO</h2>
 
-            {error && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded">
-                    {error}
-                </div>
-            )}
-
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Company Name</label>
-                <select
-                    value={formData.companyName}
-                    onChange={e => handleIPOSelection(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                    required
-                >
-                    <option value="">Select an Open IPO</option>
-                    {openIPOs.map(ipo => (
-                        <option key={ipo.id} value={ipo.companyName}>
-                            {ipo.companyName} ({formatCurrency(parseFloat(ipo.pricePerShare))})
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* IPO Selection */}
                 <div>
-                    <Input
-                        label="Quantity"
-                        type="number"
-                        min="1"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select IPO
+                    </label>
+                    <select
+                        value={formData.companyName}
+                        onChange={e => handleIPOSelection(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-transparent"
                         required
-                        value={formData.quantity}
-                        onChange={e => setFormData({ ...formData, quantity: e.target.value })}
-                    />
+                    >
+                        <option value="">-- Select an IPO --</option>
+                        {openIPOs.map(ipo => (
+                            <option key={ipo.id} value={ipo.companyName}>
+                                {ipo.companyName} - {formatCurrency(ipo.pricePerShare)} per share
+                            </option>
+                        ))}
+                    </select>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Price / Share</label>
-                    <div className="px-3 py-2 border rounded-md bg-slate-50 text-slate-700">
-                        {formData.pricePerShare ? formatCurrency(parseFloat(formData.pricePerShare)) : '-'}
+
+                {/* Two Column Layout for Quantity and Price */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Quantity
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            required
+                            value={formData.quantity}
+                            onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-transparent"
+                            placeholder="Enter quantity"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Price per Share
+                        </label>
+                        <div className="px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700">
+                            {formData.pricePerShare ? formatCurrency(parseFloat(formData.pricePerShare)) : '-'}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Deduct from Account</label>
-                <select
-                    value={formData.accountId}
-                    onChange={e => setFormData({ ...formData, accountId: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-md"
-                >
-                    {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>
-                            {acc.accountNumber} ({formatCurrency(acc.balance)}) {acc.isPrimary ? '(Primary)' : ''}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
-                <div className="text-sm">
-                    <span className="text-slate-500">Total Amount:</span>
-                    <span className="font-bold text-slate-900 ml-2">{formatCurrency(totalAmount)}</span>
+                {/* Account Selection */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Deduct from Account
+                    </label>
+                    <select
+                        value={formData.accountId}
+                        onChange={e => setFormData({ ...formData, accountId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-transparent"
+                        required
+                    >
+                        {accounts.map(acc => (
+                            <option key={acc.id} value={acc.id}>
+                                {acc.bankName} - {acc.accountNumber} ({formatCurrency(acc.balance)}) {acc.isPrimary ? '(Primary)' : ''}
+                            </option>
+                        ))}
+                    </select>
+                    {selectedAccount && (
+                        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                            <div className="flex items-center gap-2 text-sm text-blue-900">
+                                <Wallet className="w-4 h-4" />
+                                <span>
+                                    Available Balance: <strong>{formatCurrency(selectedAccount.balance)}</strong>
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <Button type="submit" isLoading={submitting} disabled={totalAmount <= 0}>
-                    Submit Application
-                </Button>
-            </div>
-        </form>
+
+                {/* Summary Section */}
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Total Amount:</span>
+                        <span className="text-xl font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+                    </div>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                        {error}
+                    </div>
+                )}
+
+                {/* Submit Button */}
+                <div className="flex justify-end gap-3">
+                    <ActionButton
+                        type="submit"
+                        disabled={submitting || totalAmount <= 0}
+                        className="w-full md:w-auto"
+                    >
+                        {submitting ? 'Submitting...' : 'Submit Application'}
+                    </ActionButton>
+                </div>
+            </form>
+        </Card>
     );
 };

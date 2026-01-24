@@ -136,6 +136,7 @@ export const BankingDashboard: React.FC = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Number</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Bank Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Name</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
@@ -161,6 +162,9 @@ export const BankingDashboard: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">
                                             {account.accountType.replace('_', ' ')}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                                            {account.bankName || '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                                             {account.accountName || 'Unnamed'}

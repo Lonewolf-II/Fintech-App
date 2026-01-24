@@ -48,39 +48,31 @@ export const allotIPOApplication = async (req, res) => {
             const allottedAmount = parseFloat(allotmentQuantity) * parseFloat(application.pricePerShare);
             const refundAmount = parseFloat(application.totalAmount) - allottedAmount;
 
-            // Deduct allotted amount from balance and blocked amount
+            // Deduct allotted amount from balance and release held balance
             await account.update({
                 balance: parseFloat(account.balance) - allottedAmount,
-                blockedAmount: parseFloat(account.blockedAmount) - parseFloat(application.totalAmount)
+                heldBalance: parseFloat(account.heldBalance || 0) - parseFloat(application.totalAmount)
             }, { transaction });
 
-            // Create transaction for IPO allotment
+            // If partial allotment, add refund back to balance (NO transaction created)
+            if (refundAmount > 0) {
+                await account.update({
+                    balance: parseFloat(account.balance) + refundAmount
+                }, { transaction });
+            }
+
+            // Create SINGLE transaction for IPO allotment
             await Transaction.create({
                 transactionId: `TXN-IPO-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 accountId: account.id,
                 transactionType: 'ipo_allotment',
                 amount: -allottedAmount,
-                balanceAfter: parseFloat(account.balance) - allottedAmount,
-                description: `IPO Allotment: ${application.companyName} - ${allotmentQuantity} shares`,
+                balanceAfter: parseFloat(account.balance),
+                description: `IPO Allotment - ${application.companyName}`,
                 referenceId: application.id,
                 referenceType: 'IPOApplication',
                 createdBy: req.user.id
             }, { transaction });
-
-            // If there's a refund, create refund transaction
-            if (refundAmount > 0) {
-                await Transaction.create({
-                    transactionId: `TXN-REFUND-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                    accountId: account.id,
-                    transactionType: 'ipo_release',
-                    amount: refundAmount,
-                    balanceAfter: parseFloat(account.balance) - allottedAmount, // Already updated above
-                    description: `IPO Refund: ${application.companyName} - Unallotted amount`,
-                    referenceId: application.id,
-                    referenceType: 'IPOApplication',
-                    createdBy: req.user.id
-                }, { transaction });
-            }
 
             // Get or create portfolio
             let portfolio = await Portfolio.findOne({
@@ -97,11 +89,15 @@ export const allotIPOApplication = async (req, res) => {
                 }, { transaction });
             }
 
+            // Get listing to use scrip name
+            const listing = await IPOListing.findByPk(application.ipoListingId);
+            const scripName = listing?.scripName || application.companyName.toUpperCase().replace(/\s+/g, '');
+
             // Create holding
             await Holding.create({
                 holdingId: `HOLD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 portfolioId: portfolio.id,
-                stockSymbol: application.companyName.toUpperCase().replace(/\s+/g, ''),
+                stockSymbol: scripName,
                 companyName: application.companyName,
                 quantity: allotmentQuantity,
                 purchasePrice: application.pricePerShare,
@@ -121,22 +117,9 @@ export const allotIPOApplication = async (req, res) => {
             }, { transaction });
 
         } else if (allotmentStatus === 'not_allotted') {
-            // Release blocked funds
+            // Release held funds - NO transaction created
             await account.update({
-                blockedAmount: parseFloat(account.blockedAmount) - parseFloat(application.totalAmount)
-            }, { transaction });
-
-            // Create transaction for fund release
-            await Transaction.create({
-                transactionId: `TXN-RELEASE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                accountId: account.id,
-                transactionType: 'ipo_release',
-                amount: 0, // No balance change, just unblocking
-                balanceAfter: parseFloat(account.balance),
-                description: `IPO Not Allotted: ${application.companyName} - Funds released`,
-                referenceId: application.id,
-                referenceType: 'IPOApplication',
-                createdBy: req.user.id
+                heldBalance: parseFloat(account.heldBalance || 0) - parseFloat(application.totalAmount)
             }, { transaction });
 
             // Update application

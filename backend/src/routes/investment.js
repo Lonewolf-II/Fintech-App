@@ -5,7 +5,9 @@ import {
     sellShares,
     getInvestorInvestments,
     getInvestmentById,
-    getAllInvestments
+    getAllInvestments,
+    getAllHoldings,
+    updateScripPrices
 } from '../controllers/investmentController.js';
 import { authMiddleware, requireRole } from '../middleware/auth.js';
 
@@ -20,5 +22,9 @@ router.post('/investments/create', requireRole('admin'), createInvestment);
 router.put('/investments/:id/update-price', requireRole('admin'), updateMarketPrice);
 router.post('/investments/:id/sell', requireRole('admin'), sellShares);
 router.get('/investments/investor/:id', requireRole('admin'), getInvestorInvestments);
+
+// Holdings management routes (Admin only)
+router.get('/holdings/summary', requireRole('admin'), getAllHoldings);
+router.put('/scrip-prices', requireRole('admin'), updateScripPrices);
 
 export default router;

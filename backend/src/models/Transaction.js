@@ -60,6 +60,18 @@ const Transaction = sequelize.define('Transaction', {
             model: 'users',
             key: 'id'
         }
+    },
+    profitAmount: {
+        type: DataTypes.DECIMAL(15, 2),
+        field: 'profit_amount'
+    },
+    saleQuantity: {
+        type: DataTypes.INTEGER,
+        field: 'sale_quantity'
+    },
+    salePrice: {
+        type: DataTypes.DECIMAL(10, 2),
+        field: 'sale_price'
     }
 }, {
     tableName: 'transactions',

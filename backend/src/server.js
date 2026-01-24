@@ -7,6 +7,7 @@ import { testConnection } from './config/database.js';
 import { sequelize } from './models/index.js';
 import { centralSequelize } from '../../central-db/index.js';
 import { tenantContext, requireFeature, checkSubscriptionLimits } from './middleware/tenantContext.js';
+import { startScheduler } from './services/schedulerService.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -25,6 +26,8 @@ import profitDistributionRoutes from './routes/profitDistribution.js';
 import adminDashboardRoutes from './routes/adminDashboard.js';
 import feeRoutes from './routes/fees.js';
 import tenantRoutes from './routes/tenants.js';
+import bankConfigRoutes from './routes/bankConfig.js';
+import specialAccountRoutes from './routes/specialAccount.js';
 
 dotenv.config();
 
@@ -78,7 +81,14 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/banking', bankingRoutes);
 app.use('/api/portfolio', requireFeature('portfolio'), portfolioRoutes);
 app.use('/api/ipo', requireFeature('ipo'), ipoRoutes);
+app.use('/api/ipo', requireFeature('ipo'), ipoRoutes);
+
+// Admin sub-modules (Mount BEFORE adminRoutes to avoid global admin check blocking them)
+app.use('/api/admin', bankConfigRoutes);
+app.use('/api/admin', specialAccountRoutes);
+
 app.use('/api/admin', adminRoutes);
+
 app.use('/api/checker', checkerRoutes);
 app.use('/api', investorRoutes);
 app.use('/api/investors', requireFeature('ipo'), investorsRoutes);
@@ -124,6 +134,9 @@ const startServer = async () => {
         } 
         */
 
+        // Start Scheduler
+        startScheduler();
+
         app.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
             console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -137,5 +150,6 @@ const startServer = async () => {
 };
 
 startServer();
+console.log('Applying permission updates... and Scheduler');
 
 export default app;

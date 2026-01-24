@@ -26,7 +26,8 @@ export interface ApplyIPOPayload {
 export interface IPOListing {
     id: number;
     companyName: string;
-    pricePerShare: string;
+    scripName?: string;
+    pricePerShare: number;
     totalShares: number;
     openDate: string;
     closeDate: string;
@@ -45,19 +46,24 @@ export const ipoApi = {
         return response.data;
     },
 
+    verify: async (id: number, status: 'verified' | 'rejected'): Promise<IPOApplication> => {
+        const response = await apiClient.put(`/ipo/applications/${id}/verify`, { status });
+        return response.data;
+    },
+
+    // Allotment
+    allotApplication: async (id: string, status: 'allotted' | 'not_allotted', allocatedQuantity?: number): Promise<void> => {
+        const payload = { status, allocatedQuantity };
+        await apiClient.post(`/ipo/applications/${id}/allot`, payload);
+    },
+
     deleteApplication: async (id: string) => {
         const response = await apiClient.delete(`/ipo/applications/${id}`);
         return response.data;
     },
 
-    verify: async (id: number, status: 'verified' | 'rejected'): Promise<IPOApplication> => {
-        const response = await apiClient.put(`/ipo/${id}/verify`, { status });
-        return response.data;
-    },
-
-    getApplications: async (customerId?: string): Promise<IPOApplication[]> => {
-        const params = customerId ? { customerId } : {};
-        const response = await apiClient.get('/ipo/applications', { params });
+    getApplications: async (filters?: { customerId?: string; status?: string; ipoListingId?: string }): Promise<IPOApplication[]> => {
+        const response = await apiClient.get('/ipo/applications', { params: filters });
         return response.data;
     },
 
@@ -82,19 +88,26 @@ export const ipoApi = {
         return response.data;
     },
 
-    bulkApply: async (ipoListingId: number, applications: { customerId: number; quantity: number }[]): Promise<any> => {
-        const response = await apiClient.post('/ipo/bulk', { ipoListingId, applications });
+    closeListing: async (id: number): Promise<IPOListing> => {
+        const response = await apiClient.post(`/ipo/listings/${id}/close`);
         return response.data;
     },
 
-    // Allotment
-    allotApplication: async (id: number, data: {
-        allotmentQuantity: number;
-        allotmentStatus: 'allotted' | 'not_allotted';
-    }): Promise<IPOApplication> => {
-        const response = await apiClient.post(`/ipo/applications/${id}/allot`, data);
+    updateListing: async (id: number, data: Partial<IPOListing>): Promise<IPOListing> => {
+        const response = await apiClient.put(`/ipo/listings/${id}`, data);
         return response.data;
     },
+
+    deleteListing: async (id: number): Promise<void> => {
+        await apiClient.delete(`/ipo/listings/${id}`);
+    },
+
+    bulkApply: async (ipoListingId: number, applications: { customerId: number; quantity: number }[]): Promise<any> => {
+        const response = await apiClient.post('/ipo/bulk-apply', { ipoListingId, applications });
+        return response.data;
+    },
+
+    // function removed
 
     // Statistics
     getStats: async (): Promise<any> => {

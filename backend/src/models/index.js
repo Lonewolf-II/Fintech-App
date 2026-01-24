@@ -18,6 +18,7 @@ import ProfitDistribution from './ProfitDistribution.js';
 import Fee from './Fee.js';
 import SpecialAccount from './SpecialAccount.js';
 import InvestorAccountAssignment from './InvestorAccountAssignment.js';
+import BankConfiguration from './BankConfiguration.js';
 
 // User - Customer associations
 User.hasMany(Customer, { foreignKey: 'createdBy', as: 'createdCustomers' });
@@ -147,5 +148,6 @@ export {
     ProfitDistribution,
     Fee,
     SpecialAccount,
-    InvestorAccountAssignment
+    InvestorAccountAssignment,
+    BankConfiguration
 };

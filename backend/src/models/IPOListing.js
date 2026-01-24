@@ -12,6 +12,11 @@ const IPOListing = sequelize.define('IPOListing', {
         allowNull: false,
         field: 'company_name'
     },
+    scripName: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        field: 'scrip_name'
+    },
     pricePerShare: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -29,7 +34,7 @@ const IPOListing = sequelize.define('IPOListing', {
     },
     closeDate: {
         type: DataTypes.DATEONLY,
-        allowNull: false,
+        allowNull: true,
         field: 'close_date'
     },
     openTime: {
@@ -52,8 +57,23 @@ const IPOListing = sequelize.define('IPOListing', {
         allowNull: true,
         field: 'allotment_time'
     },
+    resultPublishDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        field: 'result_publish_date'
+    },
+    resultPublishTime: {
+        type: DataTypes.TIME,
+        allowNull: true,
+        field: 'result_publish_time'
+    },
+    autoClose: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+        field: 'auto_close'
+    },
     status: {
-        type: DataTypes.ENUM('upcoming', 'open', 'closed', 'allotted'),
+        type: DataTypes.ENUM('upcoming', 'open', 'closed', 'result_published', 'allotted'),
         defaultValue: 'upcoming',
         allowNull: false
     },

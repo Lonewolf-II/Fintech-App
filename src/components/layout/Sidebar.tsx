@@ -13,6 +13,7 @@ import {
     Briefcase,
     CheckCircle,
     PlusCircle,
+    Wallet,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { UserRole } from '../../types/auth.types';
@@ -103,18 +104,7 @@ const navigationItems: NavItem[] = [
         path: '/approvals',
         roles: ['checker'],
     },
-    {
-        label: 'My Investments',
-        icon: <Briefcase className="w-5 h-5" />,
-        path: '/investments',
-        roles: ['investor'],
-    },
-    {
-        label: 'Apply for IPO',
-        icon: <PlusCircle className="w-5 h-5" />,
-        path: '/ipo/apply',
-        roles: ['maker'],
-    },
+
     {
         label: 'Bulk IPO Application',
         icon: <PlusCircle className="w-5 h-5" />,
@@ -126,6 +116,18 @@ const navigationItems: NavItem[] = [
         icon: <TrendingUp className="w-5 h-5" />, // Or another suitable icon like DollarSign if available
         path: '/transactions',
         roles: ['maker'],
+    },
+    {
+        label: 'Bank Settings',
+        icon: <Building2 className="w-5 h-5" />,
+        path: '/settings/banks',
+        roles: ['admin'],
+    },
+    {
+        label: 'Charge Accounts',
+        icon: <Wallet className="w-5 h-5" />,
+        path: '/charges',
+        roles: ['admin'],
     },
     {
         label: 'Settings',

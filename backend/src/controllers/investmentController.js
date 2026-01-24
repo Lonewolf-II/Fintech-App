@@ -273,3 +273,90 @@ export const getAllInvestments = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch investments' });
     }
 };
+
+// GET /api/holdings/summary - Get all holdings grouped by scrip
+export const getAllHoldings = async (req, res) => {
+    try {
+        const { Portfolio, Holding, Customer } = await import('../models/index.js');
+
+        const holdings = await Holding.findAll({
+            include: [
+                {
+                    model: Portfolio,
+                    as: 'portfolio',
+                    include: [{
+                        model: Customer,
+                        as: 'customer',
+                        attributes: ['id', 'customerId', 'fullName', 'email']
+                    }]
+                }
+            ],
+            order: [['stockSymbol', 'ASC']]
+        });
+
+        const summaryMap = {};
+        holdings.forEach(holding => {
+            const scrip = holding.stockSymbol;
+            if (!summaryMap[scrip]) {
+                summaryMap[scrip] = {
+                    scripName: scrip,
+                    companyName: holding.companyName,
+                    totalQuantity: 0,
+                    lastClosingPrice: holding.lastClosingPrice || 0,
+                    lastTransactionPrice: holding.lastTransactionPrice || 0,
+                    valueAtClosing: 0,
+                    valueAtLTP: 0,
+                    totalInvestment: 0,
+                    customerHoldings: []
+                };
+            }
+
+            const investment = parseFloat(holding.quantity) * parseFloat(holding.purchasePrice);
+            const valueClosing = parseFloat(holding.quantity) * parseFloat(holding.lastClosingPrice || 0);
+            const valueLTP = parseFloat(holding.quantity) * parseFloat(holding.lastTransactionPrice || 0);
+
+            summaryMap[scrip].totalQuantity += parseInt(holding.quantity);
+            summaryMap[scrip].totalInvestment += investment;
+            summaryMap[scrip].valueAtClosing += valueClosing;
+            summaryMap[scrip].valueAtLTP += valueLTP;
+            summaryMap[scrip].customerHoldings.push({
+                ...holding.toJSON(),
+                customerName: holding.portfolio?.customer?.fullName,
+                customerId: holding.portfolio?.customer?.customerId
+            });
+        });
+
+        const summary = Object.values(summaryMap);
+        const grandTotal = summary.reduce((acc, item) => ({
+            totalValueAtClosing: acc.totalValueAtClosing + item.valueAtClosing,
+            totalValueAtLTP: acc.totalValueAtLTP + item.valueAtLTP,
+            totalInvestment: acc.totalInvestment + item.totalInvestment
+        }), { totalValueAtClosing: 0, totalValueAtLTP: 0, totalInvestment: 0 });
+
+        res.json({ summary, grandTotal, holdings });
+    } catch (error) {
+        console.error('Get all holdings error:', error);
+        res.status(500).json({ error: 'Failed to fetch holdings' });
+    }
+};
+
+// PUT /api/scrip-prices - Bulk update stock prices
+export const updateScripPrices = async (req, res) => {
+    try {
+        const { Holding } = await import('../models/index.js');
+        const { scripName, lastClosingPrice, lastTransactionPrice } = req.body;
+
+        const [updatedCount] = await Holding.update(
+            {
+                lastClosingPrice: lastClosingPrice !== undefined ? lastClosingPrice : null,
+                lastTransactionPrice: lastTransactionPrice !== undefined ? lastTransactionPrice : null
+            },
+            { where: { stockSymbol: scripName } }
+        );
+
+        res.json({ message: `Updated prices for ${updatedCount} holdings`, updatedCount });
+    } catch (error) {
+        console.error('Update scrip prices error:', error);
+        res.status(500).json({ error: 'Failed to update prices' });
+    }
+};
