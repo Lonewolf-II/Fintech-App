@@ -16,12 +16,36 @@ const fixEnum = async () => {
             console.log('Error adding "result_published" (might already exist):', err.message);
         }
 
-        // Add "allotted"
         try {
             await sequelize.query(`ALTER TYPE "enum_ipo_listings_status" ADD VALUE 'allotted';`);
             console.log('Added "allotted" to ENUM.');
         } catch (err) {
             console.log('Error adding "allotted" (might already exist):', err.message);
+        }
+
+        console.log('Fixing ENUM "enum_transactions_transaction_type"...');
+
+        const txnTypes = ['ipo_hold', 'ipo_release', 'ipo_allotment', 'fee_deduction', 'share_sale', 'profit_distribution', 'principal_return'];
+
+        for (const type of txnTypes) {
+            try {
+                // Try lowercase table name first (most likely)
+                await sequelize.query(`ALTER TYPE "enum_transactions_transaction_type" ADD VALUE '${type}';`);
+                console.log(`Added "${type}" to ENUM.`);
+            } catch (err) {
+                // Ignore if exists, but log if other error
+                if (!err.message.includes('already exists')) {
+                    // Try Capitalized Table Name Just in Case
+                    try {
+                        await sequelize.query(`ALTER TYPE "enum_Transactions_transaction_type" ADD VALUE '${type}';`);
+                        console.log(`Added "${type}" to ENUM (Capitalized).`);
+                    } catch (err2) {
+                        console.log(`Error adding "${type}" (might already exist):`, err2.message);
+                    }
+                } else {
+                    console.log(`"${type}" already exists.`);
+                }
+            }
         }
 
         console.log('Fix complete.');

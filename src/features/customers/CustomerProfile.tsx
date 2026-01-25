@@ -21,12 +21,16 @@ import { PortfolioHoldingsTable } from './components/PortfolioHoldingsTable';
 
 import { Modal } from '../../components/common/Modal';
 import type { Account } from '../../types/business.types';
+import { AccountStatementViewer } from '../../components/common/AccountStatementViewer';
+import { openStatementViewer, closeStatementViewer, fetchTransactions } from '../banking/bankingSlice';
+import { FileText } from 'lucide-react';
 
 export const CustomerProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const dispatch = useAppDispatch();
     const { user } = useAppSelector((state) => state.auth);
     const { selectedCustomer, isLoading, error } = useAppSelector((state) => state.customers);
+    const { statementViewer, transactions } = useAppSelector((state) => state.banking);
     const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'portfolio' | 'credentials'>('overview');
     const [portfolioSubTab, setPortfolioSubTab] = useState<'holdings' | 'apply' | 'applications' | 'details'>('holdings');
 
@@ -214,12 +218,14 @@ export const CustomerProfile: React.FC = () => {
                             <thead className="bg-slate-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Number</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Account Name</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Bank Name</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Blocked</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Primary</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">
@@ -230,6 +236,7 @@ export const CustomerProfile: React.FC = () => {
                                         onClick={() => setSelectedAccount(acc)}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{acc.accountNumber}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{acc.accountName || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{acc.bankName || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 capitalize">{acc.accountType.replace('_', ' ')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-bold">{formatCurrency(acc.balance)}</td>
@@ -242,6 +249,22 @@ export const CustomerProfile: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                             {acc.isPrimary && <Shield className="w-4 h-4 text-blue-500" />}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (acc.id) {
+                                                        dispatch(openStatementViewer(acc));
+                                                        dispatch(fetchTransactions({ accountId: String(acc.id) }));
+                                                    }
+                                                }}
+                                                title="View Statement"
+                                            >
+                                                <FileText className="w-4 h-4 text-blue-600" />
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}
@@ -630,6 +653,23 @@ export const CustomerProfile: React.FC = () => {
                     }}
                     account={selectedAccount}
                 />
+            )}
+
+            {/* Account Statement Viewer */}
+            {statementViewer.isOpen && statementViewer.account && (
+                statementViewer.isLoadingTransactions ? (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-8 rounded-lg">
+                            <p className="text-slate-600">Loading transactions...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <AccountStatementViewer
+                        account={statementViewer.account}
+                        transactions={transactions}
+                        onClose={() => dispatch(closeStatementViewer())}
+                    />
+                )
             )}
         </div>
     );

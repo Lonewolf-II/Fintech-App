@@ -2,6 +2,7 @@ import { IPOApplication, Account, Customer, IPOListing, ModificationRequest, Ban
 import { Op } from 'sequelize';
 
 export const applyIPO = async (req, res) => {
+    const transaction = await sequelize.transaction();
     try {
         const { customerId, accountId, companyName, quantity, pricePerShare } = req.body;
 
@@ -11,23 +12,27 @@ export const applyIPO = async (req, res) => {
         const totalAmount = parseFloat(quantity) * parseFloat(pricePerShare);
 
         // Check if account has sufficient balance (Balance - Blocked)
-        const account = await Account.findByPk(accountId);
+        const account = await Account.findByPk(accountId, { transaction });
         if (!account) {
             console.error(`Apply IPO: Account ${accountId} not found`);
+            await transaction.rollback();
             return res.status(404).json({ error: 'Account not found' });
         }
 
         console.log(`Apply IPO: Using account ${accountId} - ${account.bankName} ${account.accountNumber}`);
 
-        const availableBalance = parseFloat(account.balance) - parseFloat(account.blockedAmount);
+        // Calculate available balance considering blocked amount
+        const currentBlocked = parseFloat(account.blockedAmount || 0);
+        const currentHeld = parseFloat(account.heldBalance || 0);
+        const Balance = parseFloat(account.balance || 0);
+        // Available = Balance - (Blocked + Held) 
+        // Note: Model virtual might only subtract Held, but we must subtract both for safety
+        const availableBalance = Balance - (currentBlocked + currentHeld);
 
         if (availableBalance < totalAmount) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'Insufficient available funds' });
         }
-
-        // DEBUG: Check primary account blocked amount BEFORE creation
-        const primaryAccount = await Account.findOne({ where: { customerId, isPrimary: true } });
-        console.log(`Apply IPO (DEBUG): Primary Account ${primaryAccount?.id} Blocked Amount BEFORE: ${primaryAccount?.blockedAmount}`);
 
         // Check for existing application (any status except rejected)
         const existingApplication = await IPOApplication.findOne({
@@ -35,10 +40,12 @@ export const applyIPO = async (req, res) => {
                 customerId,
                 companyName,
                 status: { [Op.ne]: 'rejected' }
-            }
+            },
+            transaction
         });
 
         if (existingApplication) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'You have already applied for this IPO' });
         }
 
@@ -50,33 +57,35 @@ export const applyIPO = async (req, res) => {
             pricePerShare,
             totalAmount,
             status: 'pending'
-        });
+        }, { transaction });
 
-        // Toggle reload to ensure timestamps
-        await application.reload();
+        // BLOCK FUNDS on Selected Account
+        // Update account blocked amount
+        await account.update({
+            blockedAmount: currentBlocked + totalAmount
+        }, { transaction });
 
-        // DEBUG: Check primary account blocked amount AFTER creation
-        await primaryAccount.reload();
-        console.log(`Apply IPO (DEBUG): Primary Account ${primaryAccount?.id} Blocked Amount AFTER: ${primaryAccount?.blockedAmount}`);
-        console.log(`Apply IPO (DEBUG): Selected Account ${accountId} Blocked Amount AFTER: ${(await Account.findByPk(accountId)).blockedAmount}`);
+        // Create Informational Transaction for Block (Statement Visibility)
+        await Transaction.create({
+            accountId,
+            transactionType: 'ipo_hold',
+            amount: 0, // 0 because funds are blocked, not deducted from ledger balance yet
+            description: `Fund Block for IPO: ${companyName}. Amount: ${totalAmount}.`, // Explicitly mention amount in description
+            balanceAfter: Balance // Ledger balance remains same
+        }, { transaction });
 
-        // DOUBLE CHECK: Fetch fresh from DB to prove to user what is saved
-        const savedApp = await IPOApplication.findByPk(application.id);
-        console.log(`Apply IPO (DB CHECK): Saved Application ${savedApp.id} has accountId: ${savedApp.accountId}`);
-        console.log(`Apply IPO: createdAt = ${application.createdAt}, created_at = ${application.dataValues?.created_at}`);
+        console.log(`Apply IPO: Funds blocked on Account ${accountId}. Amount: ${totalAmount}. New Blocked: ${currentBlocked + totalAmount}`);
 
-        // Convert to plain object to ensure all fields are serialized
+        await transaction.commit();
+
+        // Convert to plain object
         const applicationData = application.toJSON();
-        // Ensure createdAt is populated from dataValues if toJSON missed it
-        if (!applicationData.createdAt && application.dataValues?.created_at) {
-            applicationData.createdAt = application.dataValues.created_at;
-        }
 
-        console.log(`Apply IPO: Application data being sent:`, JSON.stringify(applicationData, null, 2));
         console.log('=== IPO APPLICATION END ===');
 
         res.status(201).json(applicationData);
     } catch (error) {
+        if (transaction) await transaction.rollback();
         console.error('Apply IPO error:', error);
         res.status(500).json({ error: 'Failed to apply for IPO' });
     }
@@ -159,6 +168,10 @@ export const verifyIPO = async (req, res) => {
 
             console.log(`Verify IPO: CASBA Amount determined: ${casbaAmount}`);
 
+            if (!bankConfig) {
+                console.warn(`Verify IPO: No Bank Configuration found for '${normalizedBankName}'. CASBA charge will be 0.`);
+            }
+
             const totalNeeded = ipoAmount + casbaAmount;
 
             if (availableBalance < totalNeeded) {
@@ -168,13 +181,16 @@ export const verifyIPO = async (req, res) => {
                 });
             }
 
-            // Atomic update: Deduct charge from balance, Increase held amount
-            console.log(`Verify IPO: UPDATING ACCOUNT ${account.id} - Before: Balance=${currentBalance}, Held=${currentHeld}`);
-            console.log(`Verify IPO: Changes - Deducting CASBA=${casbaAmount}, Adding to Held=${ipoAmount}`);
+            // Atomic update: Deduct charge from balance, Increase held amount, Release Blocked Amount (from Apply phase)
+            console.log(`Verify IPO: UPDATING ACCOUNT ${account.id} - Before: Balance=${currentBalance}, Held=${currentHeld}, Blocked=${account.blockedAmount}`);
+            console.log(`Verify IPO: Changes - Deducting CASBA=${casbaAmount}, Adding to Held=${ipoAmount}, Releasing Blocked=${ipoAmount}`);
+
+            const currentBlocked = parseFloat(account.blockedAmount || 0);
 
             await account.update({
                 balance: currentBalance - casbaAmount,
-                heldBalance: currentHeld + ipoAmount
+                heldBalance: currentHeld + ipoAmount,
+                blockedAmount: Math.max(0, currentBlocked - ipoAmount) // Release the block placed during Apply
             }, { transaction });
 
             console.log(`Verify IPO: UPDATED ACCOUNT ${account.id} - After: Balance=${currentBalance - casbaAmount}, Held=${currentHeld + ipoAmount}`);
@@ -186,17 +202,21 @@ export const verifyIPO = async (req, res) => {
                     accountId: account.id,
                     transactionType: 'fee_deduction',
                     amount: -casbaAmount,
-                    description: `CASBA Charge-${application.companyName}`,
+                    description: `IPO application: ${application.companyName}`, // Updated description per user request
                     balanceAfter: currentBalance - casbaAmount // Logic balance after deduction
                 }, { transaction });
 
                 // Credit CASBA Collection Account
                 const casbaAccount = await SpecialAccount.findOne({
-                    where: { accountNumber: '1115240001' }
+                    where: { accountNumber: '1115240001' },
+                    transaction // Ensure transaction is used
                 });
 
                 if (casbaAccount) {
+                    console.log(`Verify IPO: Crediting CASBA Collection Account ${casbaAccount.accountNumber}`);
                     await casbaAccount.increment('balance', { by: casbaAmount, transaction });
+                } else {
+                    console.error('Verify IPO: CASBA Collection Account 1115240001 NOT FOUND!');
                 }
             }
 

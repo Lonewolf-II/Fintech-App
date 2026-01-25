@@ -28,14 +28,13 @@ export const allotIPOApplication = async (req, res) => {
             return res.status(400).json({ error: 'Only verified applications can be allotted' });
         }
 
-        // Get customer's primary account
-        const account = await Account.findOne({
-            where: { customerId: application.customerId, isPrimary: true }
-        });
+        // ALLOTMENT LOGIC: STRICT ACCOUNT USAGE
+        // Use specifically linked account from application
+        const account = await Account.findByPk(application.accountId);
 
         if (!account) {
             await transaction.rollback();
-            return res.status(400).json({ error: 'No primary account found' });
+            return res.status(400).json({ error: 'No linked account found for this application. Cannot process allotment.' });
         }
 
         if (allotmentStatus === 'allotted') {
